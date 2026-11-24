@@ -5,18 +5,18 @@ import {
   PhoneOff,
   ShieldCheck,
   ShieldAlert,
-  ShieldX,
   Volume2,
   VolumeX,
-  UserCheck,
-  UserX,
   Plus,
   Trash2,
   RefreshCw,
   Zap,
   Activity,
   AlertTriangle,
-  ExternalLink
+  ExternalLink,
+  CheckCircle2,
+  XCircle,
+  Radio
 } from 'lucide-react';
 
 interface RegisteredCaller {
@@ -79,6 +79,109 @@ const DTMF_FREQS: Record<string, [number, number]> = {
   '*': [941, 1209], '0': [941, 1336], '#': [941, 1477],
 };
 
+// ──────────────────────────────────────────────
+// SVG Transmission Tower Graphic (Lattice Pylon)
+// Turns GREEN when Active and RED when Isolated
+// ──────────────────────────────────────────────
+const TowerGraphicSvg: React.FC<{ isIsolated: boolean }> = ({ isIsolated }) => {
+  if (isIsolated) {
+    return (
+      <svg className="w-full h-24 my-1 select-none drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g-mound-iso" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#7f1d1d" />
+            <stop offset="100%" stopColor="#450a0a" />
+          </linearGradient>
+          <filter id="glow-iso" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2.5" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+        {/* Ground Base Mound (Red Alert) */}
+        <ellipse cx="80" cy="112" rx="68" ry="7" fill="url(#g-mound-iso)" opacity="0.95" />
+        <path d="M15 112 Q80 108 145 112" stroke="#ef4444" strokeWidth="2.2" fill="none" opacity="0.85" />
+        
+        {/* Disconnected Dashed Power Lines (Red) */}
+        <path d="M0 45 L48 49" stroke="#ef4444" strokeWidth="2" strokeDasharray="4,4" fill="none" opacity="0.9" />
+        <path d="M112 49 L160 45" stroke="#ef4444" strokeWidth="2" strokeDasharray="4,4" fill="none" opacity="0.9" />
+        <path d="M0 65 L40 68" stroke="#ef4444" strokeWidth="2" strokeDasharray="4,4" fill="none" opacity="0.9" />
+        <path d="M120 68 L160 65" stroke="#ef4444" strokeWidth="2" strokeDasharray="4,4" fill="none" opacity="0.9" />
+
+        {/* Tower Lattice Structure (Glowing Intense Red Pylon When Isolated) */}
+        <g stroke="#ef4444" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow-iso)">
+          {/* Main Legs */}
+          <line x1="56" y1="112" x2="74" y2="24" />
+          <line x1="104" y1="112" x2="86" y2="24" />
+          {/* Peak */}
+          <line x1="74" y1="24" x2="80" y2="8" />
+          <line x1="86" y1="24" x2="80" y2="8" />
+          {/* Crossarms */}
+          <line x1="48" y1="45" x2="112" y2="45" />
+          <line x1="38" y1="65" x2="122" y2="65" />
+          {/* Cross Bracing */}
+          <line x1="60" y1="96" x2="100" y2="96" />
+          <line x1="60" y1="96" x2="96" y2="80" />
+          <line x1="100" y1="96" x2="64" y2="80" />
+          <line x1="64" y1="80" x2="96" y2="80" />
+          <line x1="67" y1="65" x2="93" y2="65" />
+          <line x1="70" y1="45" x2="90" y2="45" />
+          <line x1="80" y1="8" x2="80" y2="45" strokeWidth="1.6" opacity="0.8" />
+        </g>
+
+        {/* Isolation Cut-Off Warning Badge */}
+        <circle cx="80" cy="55" r="14" fill="#991b1b" stroke="#f87171" strokeWidth="2" />
+        <text x="80" y="60.5" textAnchor="middle" fill="#fee2e2" fontSize="13" fontWeight="900" fontFamily="sans-serif">✕</text>
+      </svg>
+    );
+  } else {
+    return (
+      <svg className="w-full h-24 my-1 select-none drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]" viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g-mound-act" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#059669" />
+            <stop offset="100%" stopColor="#022c22" />
+          </linearGradient>
+          <filter id="glow-green" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="2.2" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+        {/* Ground Base Mound (Green Terrain) */}
+        <ellipse cx="80" cy="112" rx="68" ry="7" fill="url(#g-mound-act)" opacity="0.9" />
+        <path d="M15 112 Q80 108 145 112" stroke="#10b981" strokeWidth="2.2" fill="none" opacity="0.85" />
+        
+        {/* Continuous High-Voltage Power Lines (Green) */}
+        <path d="M0 45 Q80 50 160 45" stroke="#34d399" strokeWidth="2" fill="none" opacity="0.9" />
+        <path d="M0 65 Q80 70 160 65" stroke="#34d399" strokeWidth="2" fill="none" opacity="0.9" />
+
+        {/* Tower Lattice Structure (Glowing Intense Emerald Green Pylon When Active) */}
+        <g stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow-green)">
+          {/* Main Legs */}
+          <line x1="56" y1="112" x2="74" y2="24" />
+          <line x1="104" y1="112" x2="86" y2="24" />
+          {/* Peak */}
+          <line x1="74" y1="24" x2="80" y2="8" />
+          <line x1="86" y1="24" x2="80" y2="8" />
+          {/* Crossarms */}
+          <line x1="48" y1="45" x2="112" y2="45" />
+          <line x1="38" y1="65" x2="122" y2="65" />
+          {/* Cross Bracing */}
+          <line x1="60" y1="96" x2="100" y2="96" />
+          <line x1="60" y1="96" x2="96" y2="80" />
+          <line x1="100" y1="96" x2="64" y2="80" />
+          <line x1="64" y1="80" x2="96" y2="80" />
+          <line x1="67" y1="65" x2="93" y2="65" />
+          <line x1="70" y1="45" x2="90" y2="45" />
+          <line x1="80" y1="8" x2="80" y2="45" strokeWidth="1.6" opacity="0.8" />
+        </g>
+
+        {/* Active Power Transmission Dot */}
+        <circle cx="80" cy="55" r="5" fill="#34d399" stroke="#ecfdf5" strokeWidth="1.5" />
+      </svg>
+    );
+  }
+};
+
 export const TollFreePanel: React.FC = () => {
   const {
     isolatedTowers = [],
@@ -128,6 +231,7 @@ export const TollFreePanel: React.FC = () => {
   });
 
   const audioContextRef = useRef<AudioContext | null>(null);
+  const transcriptBottomRef = useRef<HTMLDivElement | null>(null);
 
   // Save registered callers to localStorage
   useEffect(() => {
@@ -143,6 +247,11 @@ export const TollFreePanel: React.FC = () => {
     } catch {}
   }, [callLogs]);
 
+  // Auto scroll transcript
+  useEffect(() => {
+    transcriptBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [transcript]);
+
   // Call timer interval
   useEffect(() => {
     let interval: any = null;
@@ -157,7 +266,7 @@ export const TollFreePanel: React.FC = () => {
   }, [callActive]);
 
   const addTranscript = (type: 'system' | 'caller' | 'ivr' | 'alert', text: string) => {
-    setTranscript(prev => [...prev.slice(-30), {
+    setTranscript(prev => [...prev.slice(-35), {
       type,
       time: new Date().toLocaleTimeString(),
       text
@@ -400,7 +509,6 @@ export const TollFreePanel: React.FC = () => {
     // 3. Menu Options Stage
     else if (callStage === 'MENU_OPTIONS') {
       if (key === '1') {
-        // Query another tower in same language
         setCallStage('TOWER_SELECTION');
         const p = selectedLanguage === 'ta'
           ? 'மின் கோபுர நிலையை அறிய 1 முதல் 5 வரை உள்ள எண்ணை அழுத்தவும்.'
@@ -410,13 +518,11 @@ export const TollFreePanel: React.FC = () => {
         setDisplayText(p);
         speakText(p, selectedLanguage);
       } else if (key === '9') {
-        // Change language
         setCallStage('LANGUAGE_SELECTION');
         const p = 'Press 1 for Tamil, 2 for English, 3 for Hindi.';
         setDisplayText(p);
         speakText(p, 'en');
       } else {
-        // Hang up
         const goodbye = selectedLanguage === 'ta'
           ? 'கிரிட்ட்வின் அழைத்ததற்கு நன்றி. வணக்கம்.'
           : selectedLanguage === 'hi'
@@ -528,94 +634,130 @@ export const TollFreePanel: React.FC = () => {
   const timerMin = String(Math.floor(callDuration / 60)).padStart(2, '0');
   const timerSec = String(callDuration % 60).padStart(2, '0');
 
-  return (
-    <div className="w-full flex flex-col gap-5 text-slate-100">
-      {/* Top Banner Alert Bar */}
-      <div className="bg-gradient-to-r from-blue-950/80 via-slate-900 to-indigo-950/80 border border-cyan-500/30 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shadow-md">
-            <PhoneCall className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-black text-white tracking-wide">GRIDTWIN 24/7 Toll-Free Voice Hotline</h2>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-extrabold uppercase">
-                Zero Cloud Limits
-              </span>
-            </div>
-            <p className="text-xs text-slate-300 font-medium">
-              Multi-Lingual SCADA IVR Telemetry &amp; Access Control Gating (Whitelist &amp; Blocklist)
-            </p>
-          </div>
-        </div>
+  const isolatedCount = isolatedTowers.length;
 
-        <div className="flex items-center gap-2 font-mono text-xs">
-          <button
-            onClick={() => setActiveTab('3d-twin')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/50 border border-blue-500/40 text-cyan-300 font-bold transition-all"
-          >
-            <span>🌐 View 3D Lab</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </button>
+  return (
+    <div className="w-full flex flex-col gap-6 text-slate-100 max-w-7xl mx-auto pb-8">
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* TOP HEADER: BRAND BANNER & FAST NAVIGATION                  */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#09152e] via-[#0d1f42] to-[#071329] border border-cyan-500/30 rounded-3xl p-5 sm:p-6 shadow-2xl">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 p-0.5 shadow-lg shadow-cyan-500/30 shrink-0">
+              <div className="w-full h-full bg-[#061024] rounded-[14px] flex items-center justify-center text-cyan-300">
+                <PhoneCall className="w-6 h-6 animate-pulse" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-xl sm:text-2xl font-black text-white tracking-wide">
+                  GRIDTWIN 24/7 Toll-Free Voice Hotline
+                </h1>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-[11px] font-extrabold uppercase tracking-wider">
+                  Zero Cloud Limits
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-300 font-medium mt-0.5">
+                Multi-Lingual SCADA IVR Telemetry &amp; Authorized Caller Access Control (Whitelist &amp; Blocklist)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 font-mono text-xs">
+            <button
+              onClick={() => setActiveTab('3d-twin')}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/30 hover:bg-blue-600/60 border border-blue-400/40 text-cyan-200 font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              <span>🌐 Open 3D Lab</span>
+              <ExternalLink className="w-4 h-4 text-cyan-300" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main 2-Column Cockpit Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* MAIN 2-COLUMN COCKPIT LAYOUT                                */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN (4 Cols): Virtual Phone Device & Dialpad */}
         <div className="lg:col-span-4 flex flex-col gap-4">
-          <div className="bg-[#0b132b]/95 border border-slate-800 rounded-3xl p-5 flex flex-col gap-3.5 shadow-2xl">
-            {/* Phone Brand Top */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Zap className="w-5 h-5 text-cyan-400" />
-                <span className="font-extrabold text-sm tracking-wider text-white">GRIDTWIN PHONE</span>
+          <div className="bg-gradient-to-b from-[#0e1b36] via-[#0a1429] to-[#070e1c] border border-cyan-500/30 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-2xl">
+            {/* Phone Top Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-sm">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm tracking-wide text-white">GRIDTWIN PHONE</h3>
+                  <p className="text-[10px] text-slate-400 font-mono font-medium">SCADA-IVR TELEMETRY</p>
+                </div>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">
-                SCADA-IVR v2.4
+              <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-slate-800/90 border border-slate-700 text-slate-300 font-bold">
+                v2.4 Online
               </span>
             </div>
 
-            {/* Hotline Display Card */}
-            <div className="bg-gradient-to-br from-slate-900 to-[#070e1e] border border-cyan-500/30 rounded-2xl p-3.5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shrink-0">
+            {/* Hotline Calling Gateway Display */}
+            <div className="bg-gradient-to-r from-[#071329] to-[#0a1b38] border border-cyan-500/40 rounded-2xl p-4 flex items-center gap-3.5 shadow-inner">
+              <div className="w-11 h-11 rounded-full bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 shrink-0 shadow-md">
                 <PhoneCall className="w-5 h-5" />
               </div>
-              <div className="overflow-hidden">
-                <div className="text-sm font-black text-white tracking-wide font-mono">+1 573 859 5176</div>
-                <div className="flex items-center gap-1.5 text-xs font-semibold">
-                  <span className={`w-2 h-2 rounded-full ${callActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
-                  <span className={callActive ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
-                    {callActive ? 'Connected' : 'On-Hook'}
+              <div className="min-w-0">
+                <div className="text-base font-black text-white font-mono tracking-wider truncate">
+                  +1 573 859 5176
+                </div>
+                <div className="flex items-center gap-2 text-xs font-semibold mt-0.5">
+                  <span className={`w-2.5 h-2.5 rounded-full ${callActive ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
+                  <span className={callActive ? 'text-emerald-400 font-extrabold' : 'text-slate-400 font-medium'}>
+                    {callActive ? 'Call Connected' : 'Ready (On-Hook)'}
                   </span>
-                  {callActive && <span className="font-mono text-slate-400 ml-1">({timerMin}:{timerSec})</span>}
+                  {callActive && (
+                    <span className="font-mono text-cyan-300 font-extrabold bg-slate-900/80 px-2 py-0.5 rounded-md border border-slate-700 text-[11px]">
+                      {timerMin}:{timerSec}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* OLED Virtual Phone Screen */}
-            <div className="bg-[#040813] border border-cyan-500/30 rounded-2xl p-3.5 min-h-[110px] flex flex-col justify-between">
-              <div className="text-xs font-mono font-medium text-emerald-300 leading-relaxed whitespace-pre-line select-text">
+            <div className="relative bg-[#030712] border border-cyan-500/40 rounded-2xl p-4 min-h-[125px] flex flex-col justify-between shadow-inner overflow-hidden">
+              <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-60">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[9px] font-mono text-emerald-400 uppercase tracking-widest">OLED</span>
+              </div>
+              <div className="text-xs font-mono font-medium text-emerald-300 leading-relaxed whitespace-pre-line select-text pr-8">
                 {displayText}
               </div>
               {isSpeaking && (
-                <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-800 text-[11px] text-cyan-400 font-bold">
-                  <Volume2 className="w-3.5 h-3.5 animate-pulse" />
+                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-800 text-[11px] text-cyan-300 font-bold">
+                  <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" />
                   <span>Speaking ({selectedLanguage.toUpperCase()})...</span>
+                  <div className="flex items-center gap-1 ml-auto">
+                    <span className="w-1 h-3 bg-cyan-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-1 h-4 bg-cyan-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1 h-2 bg-cyan-400 rounded-full animate-bounce" />
+                  </div>
                 </div>
               )}
             </div>
 
             {/* Caller Identity Selector (Access Control Gateway) */}
-            <div className="bg-[#070e1e] border border-slate-800 rounded-2xl p-3 flex flex-col gap-2">
+            <div className="bg-[#060e20] border border-slate-800/90 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-sm">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-300 text-[11px] uppercase tracking-wider">Calling From (Caller ID):</span>
-                <span className={`text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full ${
+                <span className="font-extrabold text-slate-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                  <Radio className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Calling From (Caller ID):</span>
+                </span>
+                <span className={`text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full ${
                   currentAuth.status === 'ACTIVE'
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
                     : currentAuth.status === 'BLOCKED'
-                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
-                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
                 }`}>
                   {currentAuth.status === 'ACTIVE' ? '✔ Authorized' : currentAuth.status === 'BLOCKED' ? '🚫 Blocked' : '⛔ Unregistered'}
                 </span>
@@ -624,7 +766,7 @@ export const TollFreePanel: React.FC = () => {
               <select
                 value={selectedCallerNumber}
                 onChange={(e) => setSelectedCallerNumber(e.target.value)}
-                className="w-full bg-[#050a16] border border-slate-700/80 rounded-xl px-2.5 py-2 text-xs font-semibold text-white outline-none focus:border-cyan-400"
+                className="w-full bg-[#030814] border border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-white outline-none focus:border-cyan-400 transition-colors cursor-pointer"
               >
                 {registeredCallers.map((c) => (
                   <option key={c.phoneNumber} value={c.phoneNumber}>
@@ -642,7 +784,7 @@ export const TollFreePanel: React.FC = () => {
                   placeholder="Or test custom phone number..."
                   value={customCallerInput}
                   onChange={(e) => setCustomCallerInput(e.target.value)}
-                  className="flex-1 bg-[#050a16] border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs font-mono text-white outline-none focus:border-cyan-400"
+                  className="flex-1 bg-[#030814] border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-white outline-none focus:border-cyan-400"
                 />
                 <button
                   type="button"
@@ -652,7 +794,7 @@ export const TollFreePanel: React.FC = () => {
                       setCustomCallerInput('');
                     }
                   }}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-bold rounded-xl transition-all"
+                  className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold rounded-xl transition-all cursor-pointer"
                 >
                   Set
                 </button>
@@ -660,7 +802,7 @@ export const TollFreePanel: React.FC = () => {
             </div>
 
             {/* Dialpad 3x4 Grid */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2 pt-1">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((key) => {
                 const subLabels: Record<string, string> = {
                   '1': 'TAMIL', '2': 'ENG', '3': 'HINDI',
@@ -673,10 +815,10 @@ export const TollFreePanel: React.FC = () => {
                     key={key}
                     type="button"
                     onClick={() => handleKeyPress(key)}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-800/90 active:scale-95 border border-slate-800/80 transition-all shadow-md group"
+                    className="flex flex-col items-center justify-center p-3 rounded-2xl bg-gradient-to-b from-[#111c38] to-[#0a1226] hover:from-[#17264a] hover:to-[#0f1b38] active:scale-95 border border-slate-700/60 hover:border-cyan-500/50 transition-all shadow-md group cursor-pointer"
                   >
-                    <span className="text-base font-black text-white group-hover:text-cyan-400 leading-none">{key}</span>
-                    <span className="text-[9px] font-bold text-slate-400 tracking-wider mt-0.5">{subLabels[key]}</span>
+                    <span className="text-lg font-black text-white group-hover:text-cyan-300 leading-none">{key}</span>
+                    <span className="text-[9px] font-bold text-slate-400 tracking-wider mt-1">{subLabels[key]}</span>
                   </button>
                 );
               })}
@@ -688,18 +830,18 @@ export const TollFreePanel: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleStartCall}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/30 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-xl shadow-emerald-600/30 transition-all active:scale-[0.98] cursor-pointer"
                 >
-                  <PhoneCall className="w-4 h-4" />
+                  <PhoneCall className="w-5 h-5 animate-bounce" />
                   <span>Call Toll-Free (+1 573 859 5176)</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleHangup}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-sm shadow-lg shadow-rose-600/30 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-sm shadow-xl shadow-rose-600/30 transition-all active:scale-[0.98] cursor-pointer"
                 >
-                  <PhoneOff className="w-4 h-4" />
+                  <PhoneOff className="w-5 h-5" />
                   <span>End Call</span>
                 </button>
               )}
@@ -707,7 +849,7 @@ export const TollFreePanel: React.FC = () => {
 
             {/* Audio Voice Speech Toggle */}
             <div className="flex items-center justify-between text-xs text-slate-400 px-1 pt-1">
-              <label className="flex items-center gap-2 cursor-pointer font-medium">
+              <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-white transition-colors">
                 <input
                   type="checkbox"
                   checked={allowTts}
@@ -722,25 +864,43 @@ export const TollFreePanel: React.FC = () => {
         </div>
 
         {/* RIGHT COLUMN (8 Cols): Telemetry, Access Control & Call Audit Log */}
-        <div className="lg:col-span-8 flex flex-col gap-5">
-          {/* 1. Live Transmission Towers Status (5 Towers synced with 3D Twin) */}
-          <div className="bg-[#0b132b]/90 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col gap-3.5">
+        <div className="lg:col-span-8 flex flex-col gap-6">
+          {/* ─────────────────────────────────────────────────────────── */}
+          {/* 1. LIVE TRANSMISSION TOWERS TELEMETRY & ISOLATION STATUS    */}
+          {/* ─────────────────────────────────────────────────────────── */}
+          <div className="bg-[#0b132b]/95 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2.5">
-                <span className="text-xl">⚡</span>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <Zap className="w-5 h-5" />
+                </div>
                 <div>
-                  <h3 className="text-sm font-black text-white tracking-wide">Live Towers Telemetry &amp; Isolation Sync</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Direct 2-Way Live Sync with 3D Digital Twin</p>
+                  <h3 className="text-base font-black text-white tracking-wide">Live Towers Telemetry &amp; Isolation Sync</h3>
+                  <p className="text-xs text-slate-300 font-medium">Direct 2-Way Real-Time Synchronization with 3D Digital Twin</p>
                 </div>
               </div>
-              <span className="px-2.5 py-1 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 font-mono text-[11px] font-bold flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
                 Live 3D Twin Store
               </span>
             </div>
 
-            {/* 5 Towers Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+            {/* Dynamic Grid Summary Alert Banner */}
+            <div className={`p-3.5 rounded-2xl flex items-center gap-3 border text-xs font-bold transition-all ${
+              isolatedCount > 0
+                ? 'bg-rose-950/40 border-rose-500/60 text-rose-200'
+                : 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200'
+            }`}>
+              <span className="text-base shrink-0">{isolatedCount > 0 ? '🚨' : '✔'}</span>
+              <span>
+                {isolatedCount > 0
+                  ? `Fault Isolation Active – Tower ${isolatedTowers.join(', ')} is currently ISOLATED. Power supply is cut off. Real-time telemetry in sync with 3D Twin.`
+                  : 'All Towers Normal – 5/5 transmission towers active and transmitting power smoothly. Normal line flow.'}
+              </span>
+            </div>
+
+            {/* 5 Towers Grid with Picture of Tower Turning GREEN (Active) and RED (Isolated) */}
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3.5">
               {(['T1', 'T2', 'T3', 'T4', 'T5'] as const).map((towerId, idx) => {
                 const towerNum = String(idx + 1);
                 const isIso = isolatedTowers.includes(towerId);
@@ -750,51 +910,69 @@ export const TollFreePanel: React.FC = () => {
                 return (
                   <div
                     key={towerId}
-                    className={`rounded-2xl p-3 flex flex-col justify-between border transition-all ${
+                    className={`rounded-2xl p-3.5 flex flex-col justify-between border transition-all ${
                       isIso
-                        ? 'bg-rose-950/30 border-rose-500/50 shadow-lg shadow-rose-950/40'
-                        : 'bg-[#080f22] border-cyan-500/20 hover:border-cyan-500/40'
+                        ? 'bg-gradient-to-b from-[#220a0e] to-[#110406] border-rose-500/80 shadow-lg shadow-rose-950/60 ring-1 ring-rose-500/40'
+                        : 'bg-gradient-to-b from-[#061814] to-[#07131e] border-emerald-500/40 shadow-lg shadow-emerald-950/30 hover:border-emerald-400'
                     }`}
                   >
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-mono font-black text-xs text-white">{towerId}</span>
-                        <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
-                          isIso ? 'bg-rose-500 text-white' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      {/* Card Top: Tower Title & Live Badge */}
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-mono font-black text-xs text-white">Tower {towerNum} ({towerId})</span>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                          isIso
+                            ? 'bg-rose-500 text-white shadow-sm'
+                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                         }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isIso ? 'bg-white' : 'bg-emerald-400 animate-pulse'}`} />
                           {isIso ? 'ISOLATED' : 'ACTIVE'}
                         </span>
                       </div>
 
+                      {/* PICTURE OF TOWER TURNING RED (ISOLATED) OR GREEN (ACTIVE) */}
+                      <div className="p-1 rounded-xl bg-[#040813]/60 border border-slate-800/80 my-1.5 flex items-center justify-center">
+                        <TowerGraphicSvg isIsolated={isIso} />
+                      </div>
+
+                      {/* Telemetry Metrics */}
                       <div className="flex flex-col gap-1 text-[11px] font-mono py-1">
-                        <div className="flex justify-between text-slate-400">
-                          <span>Volt:</span>
+                        <div className="flex justify-between items-center text-slate-400">
+                          <span className="text-[10px] uppercase">Line Current:</span>
+                          <span className={`font-bold ${isIso ? 'text-rose-400' : 'text-emerald-400'}`}>{curVal}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-slate-400">
+                          <span className="text-[10px] uppercase">Bus Voltage:</span>
                           <span className="text-white font-bold">{voltVal}</span>
                         </div>
-                        <div className="flex justify-between text-slate-400">
-                          <span>Curr:</span>
-                          <span className={isIso ? 'text-rose-400 font-bold' : 'text-cyan-400 font-bold'}>{curVal}</span>
+                        <div className={`text-[10px] font-bold mt-1 text-center py-0.5 rounded ${
+                          isIso ? 'text-rose-400 bg-rose-950/50' : 'text-emerald-300 bg-emerald-950/50'
+                        }`}>
+                          {isIso ? '✖ Power Cut Off' : '✔ Live Transmission'}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 mt-2.5 pt-2 border-t border-slate-800/80">
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-1.5 mt-3 pt-2.5 border-t border-slate-800/80">
                       <button
                         type="button"
                         onClick={() => handleQuickDial(towerNum)}
-                        className="w-full py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-cyan-300 font-bold text-[10px] flex items-center justify-center gap-1 transition-all"
+                        className="w-full py-1.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/60 text-cyan-200 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all border border-blue-500/30 active:scale-95 cursor-pointer"
+                        title={`Dial Tower ${towerNum} on Hotline`}
                       >
-                        <PhoneCall className="w-3 h-3" />
+                        <PhoneCall className="w-3.5 h-3.5" />
                         <span>Dial T{towerNum}</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleTowerToggle(towerId)}
-                        className={`w-full py-1 rounded-lg font-bold text-[10px] transition-all ${
+                        className={`w-full py-1.5 rounded-xl font-extrabold text-xs transition-all active:scale-95 cursor-pointer ${
                           isIso
-                            ? 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 border border-rose-500/30'
+                            ? 'bg-emerald-600/40 hover:bg-emerald-600 text-emerald-200 border border-emerald-500/50 shadow-md shadow-emerald-900/30'
+                            : 'bg-rose-600/40 hover:bg-rose-600 text-rose-200 border border-rose-500/50 shadow-md shadow-rose-900/30'
                         }`}
+                        title={isIso ? 'Restore power transmission' : 'Isolate tower from grid'}
                       >
                         {isIso ? '⚡ Restore' : '⚙ Isolate'}
                       </button>
@@ -805,88 +983,93 @@ export const TollFreePanel: React.FC = () => {
             </div>
           </div>
 
-          {/* 2. Real-Time Call Transcript */}
-          <div className="bg-[#0b132b]/90 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col gap-3">
+          {/* ─────────────────────────────────────────────────────────── */}
+          {/* 2. REAL-TIME CALL TRANSCRIPT & DTMF LOG                     */}
+          {/* ─────────────────────────────────────────────────────────── */}
+          <div className="bg-[#0b132b]/95 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-3.5">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-sm font-black text-white tracking-wide">Real-Time Call Transcript &amp; DTMF Log</h3>
+              <div className="flex items-center gap-2.5">
+                <Activity className="w-5 h-5 text-cyan-400" />
+                <h3 className="text-base font-black text-white tracking-wide">Real-Time Call Transcript &amp; DTMF Log</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setTranscript([{ type: 'system', time: new Date().toLocaleTimeString(), text: 'Log cleared.' }])}
-                className="text-[11px] text-slate-400 hover:text-white px-2 py-1 rounded-lg bg-slate-800/60 transition-colors"
+                className="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 transition-colors cursor-pointer"
               >
                 Clear Log
               </button>
             </div>
 
-            <div className="bg-[#050b18] border border-slate-800/80 rounded-2xl p-3 max-h-[140px] overflow-y-auto flex flex-col gap-1 font-mono text-[11px]">
+            <div className="bg-[#040813] border border-slate-800/90 rounded-2xl p-4 max-h-[160px] overflow-y-auto flex flex-col gap-1.5 font-mono text-xs shadow-inner">
               {transcript.map((entry, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <span className="text-slate-500 shrink-0">[{entry.time}]</span>
+                <div key={i} className="flex items-start gap-2.5">
+                  <span className="text-slate-500 shrink-0 select-none">[{entry.time}]</span>
                   <span className={
                     entry.type === 'caller'
-                      ? 'text-cyan-400'
+                      ? 'text-cyan-300 font-bold'
                       : entry.type === 'ivr'
-                      ? 'text-emerald-300'
+                      ? 'text-emerald-300 font-medium'
                       : entry.type === 'alert'
-                      ? 'text-rose-400 font-bold'
+                      ? 'text-rose-400 font-black'
                       : 'text-slate-400'
                   }>
                     {entry.text}
                   </span>
                 </div>
               ))}
+              <div ref={transcriptBottomRef} />
             </div>
           </div>
 
-          {/* 3. Authorized Callers & Access Control (Whitelist & Blocklist) */}
-          <div className="bg-[#0b132b]/90 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col gap-4">
+          {/* ─────────────────────────────────────────────────────────── */}
+          {/* 3. AUTHORIZED CALLERS & ACCESS CONTROL (WHITELIST/BLOCKLIST)*/}
+          {/* ─────────────────────────────────────────────────────────── */}
+          <div className="bg-[#0b132b]/95 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <ShieldCheck className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-sm font-black text-white tracking-wide">Authorized Callers &amp; Access Control (Whitelist &amp; Blocklist)</h3>
+                <h3 className="text-base font-black text-white tracking-wide">Authorized Callers &amp; Access Control (Whitelist &amp; Blocklist)</h3>
               </div>
-              <div className="flex items-center gap-2 font-mono text-[11px]">
-                <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300">Total: {totalReg}</span>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">Active: {activeReg}</span>
-                <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40">Blocked: {blockedReg}</span>
+              <div className="flex items-center gap-2 font-mono text-xs">
+                <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-200 font-bold">Total: {totalReg}</span>
+                <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">Active: {activeReg}</span>
+                <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">Blocked: {blockedReg}</span>
               </div>
             </div>
 
             {/* Quick Add Number Form */}
-            <form onSubmit={handleAddCaller} className="bg-[#070e1e] border border-slate-800 rounded-2xl p-3.5 flex flex-wrap gap-2.5 items-end">
-              <div className="flex-1 min-w-[150px] flex flex-col gap-1">
-                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Phone Number (E.164):</label>
+            <form onSubmit={handleAddCaller} className="bg-[#070e1e] border border-slate-800 rounded-2xl p-4 flex flex-wrap gap-3 items-end shadow-sm">
+              <div className="flex-1 min-w-[160px] flex flex-col gap-1.5">
+                <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Phone Number (E.164):</label>
                 <input
                   type="text"
                   placeholder="+91 98765 43210"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                   required
-                  className="bg-[#050a16] border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-xs font-mono text-white outline-none focus:border-cyan-400"
+                  className="bg-[#030814] border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none focus:border-cyan-400"
                 />
               </div>
 
-              <div className="flex-1 min-w-[150px] flex flex-col gap-1">
-                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Personnel Name / Unit:</label>
+              <div className="flex-1 min-w-[160px] flex flex-col gap-1.5">
+                <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Personnel Name / Unit:</label>
                 <input
                   type="text"
                   placeholder="e.g. Substation Lead Officer"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   required
-                  className="bg-[#050a16] border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-xs text-white outline-none focus:border-cyan-400"
+                  className="bg-[#030814] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-cyan-400"
                 />
               </div>
 
-              <div className="w-[130px] flex flex-col gap-1">
-                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Role:</label>
+              <div className="w-[140px] flex flex-col gap-1.5">
+                <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Security Role:</label>
                 <select
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value as any)}
-                  className="bg-[#050a16] border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-xs text-white outline-none focus:border-cyan-400"
+                  className="bg-[#030814] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-cyan-400 cursor-pointer"
                 >
                   <option value="OPERATOR">OPERATOR</option>
                   <option value="GRID_ADMIN">GRID ADMIN</option>
@@ -897,48 +1080,48 @@ export const TollFreePanel: React.FC = () => {
 
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-md"
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Register</span>
+                <Plus className="w-4 h-4" />
+                <span>Register Number</span>
               </button>
             </form>
 
             {/* Registry Table */}
-            <div className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[190px]">
+            <div className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[220px]">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#060c1c] text-slate-400 uppercase text-[10px] font-mono sticky top-0 border-b border-slate-800">
+                <thead className="bg-[#050b18] text-slate-400 uppercase text-[10px] font-mono sticky top-0 border-b border-slate-800">
                   <tr>
-                    <th className="p-2.5">Phone Number</th>
-                    <th className="p-2.5">Authorized Personnel</th>
-                    <th className="p-2.5">Role</th>
-                    <th className="p-2.5">Status</th>
-                    <th className="p-2.5 text-right">Access Action</th>
+                    <th className="p-3">Phone Number</th>
+                    <th className="p-3">Authorized Personnel</th>
+                    <th className="p-3">Role</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Access Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 bg-[#070e20]">
+                <tbody className="divide-y divide-slate-800/60 bg-[#060e20]">
                   {registeredCallers.map((caller) => {
                     const isBlocked = caller.status === 'BLOCKED';
                     return (
                       <tr key={caller.phoneNumber} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="p-2.5 font-mono font-bold text-cyan-300">{caller.phoneNumber}</td>
-                        <td className="p-2.5 font-medium text-white">{caller.displayName}</td>
-                        <td className="p-2.5 font-mono text-[10px] text-slate-400">{caller.role}</td>
-                        <td className="p-2.5">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            isBlocked ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                        <td className="p-3 font-mono font-bold text-cyan-300">{caller.phoneNumber}</td>
+                        <td className="p-3 font-semibold text-white">{caller.displayName}</td>
+                        <td className="p-3 font-mono text-[10px] text-slate-400">{caller.role}</td>
+                        <td className="p-3">
+                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                            isBlocked ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                           }`}>
                             {isBlocked ? '● BLOCKED' : '● ACTIVE'}
                           </span>
                         </td>
-                        <td className="p-2.5 text-right flex items-center justify-end gap-1.5">
+                        <td className="p-3 text-right flex items-center justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => toggleBlockStatus(caller.phoneNumber)}
-                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                               isBlocked
-                                ? 'bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 border border-emerald-500/40'
-                                : 'bg-rose-600/30 hover:bg-rose-600 text-rose-300 border border-rose-500/40'
+                                ? 'bg-emerald-600/30 hover:bg-emerald-600 text-emerald-200 border border-emerald-500/40'
+                                : 'bg-rose-600/30 hover:bg-rose-600 text-rose-200 border border-rose-500/40'
                             }`}
                           >
                             {isBlocked ? '✔ Unblock' : '⛔ Block'}
@@ -947,9 +1130,9 @@ export const TollFreePanel: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteCaller(caller.phoneNumber)}
                             title="Delete number"
-                            className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition-colors"
+                            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>
@@ -960,77 +1143,79 @@ export const TollFreePanel: React.FC = () => {
             </div>
           </div>
 
-          {/* 4. Database Audit Call Logs */}
-          <div className="bg-[#0b132b]/90 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col gap-3.5">
+          {/* ─────────────────────────────────────────────────────────── */}
+          {/* 4. DATABASE CALL AUDIT LOG                                  */}
+          {/* ─────────────────────────────────────────────────────────── */}
+          <div className="bg-[#0b132b]/95 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <ShieldAlert className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-sm font-black text-white tracking-wide">Call Audit Log: Toll-Free Access &amp; Spoken Responses</h3>
+                <h3 className="text-base font-black text-white tracking-wide">Call Audit Log: Toll-Free Access &amp; Spoken Responses</h3>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setCallLogs([])}
-                  className="text-[11px] text-slate-400 hover:text-rose-400 px-2.5 py-1 rounded-lg bg-slate-800 transition-colors flex items-center gap-1"
+                  className="text-xs text-slate-300 hover:text-rose-400 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Trash2 className="w-3.5 h-3.5" />
                   <span>Clear DB</span>
                 </button>
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[220px]">
+            <div className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[240px]">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#060c1c] text-slate-400 uppercase text-[10px] font-mono sticky top-0 border-b border-slate-800">
+                <thead className="bg-[#050b18] text-slate-400 uppercase text-[10px] font-mono sticky top-0 border-b border-slate-800">
                   <tr>
-                    <th className="p-2.5">Timestamp</th>
-                    <th className="p-2.5">Caller Identity</th>
-                    <th className="p-2.5">Access Result</th>
-                    <th className="p-2.5">Lang</th>
-                    <th className="p-2.5">Tower</th>
-                    <th className="p-2.5">Telemetry</th>
-                    <th className="p-2.5">Spoken Audio Response</th>
+                    <th className="p-3">Timestamp</th>
+                    <th className="p-3">Caller Identity</th>
+                    <th className="p-3">Access Result</th>
+                    <th className="p-3">Lang</th>
+                    <th className="p-3">Tower</th>
+                    <th className="p-3">Telemetry</th>
+                    <th className="p-3">Spoken Audio Response</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 bg-[#070e20]">
+                <tbody className="divide-y divide-slate-800/60 bg-[#060e20]">
                   {callLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="p-6 text-center text-slate-500 italic">
+                      <td colSpan={7} className="p-8 text-center text-slate-500 italic">
                         No toll-free calls recorded yet. Use the dialpad on the left to make your first call!
                       </td>
                     </tr>
                   ) : (
                     callLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="p-2.5 font-mono text-[11px] text-slate-400 whitespace-nowrap">{log.timestamp}</td>
-                        <td className="p-2.5">
+                        <td className="p-3 font-mono text-[11px] text-slate-400 whitespace-nowrap">{log.timestamp}</td>
+                        <td className="p-3">
                           <div className="font-mono font-bold text-amber-300">{log.callerNumber}</div>
                           <div className="text-[10px] text-slate-400">{log.callerName}</div>
                         </td>
-                        <td className="p-2.5 whitespace-nowrap">
+                        <td className="p-3 whitespace-nowrap">
                           {log.accessResult === 'AUTHORIZED' ? (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                               ✔ AUTHORIZED
                             </span>
                           ) : log.accessResult === 'BLOCKED' ? (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/40">
+                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
                               🚫 BLOCKED
                             </span>
                           ) : (
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                            <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
                               ⛔ UNREGISTERED
                             </span>
                           )}
                         </td>
-                        <td className="p-2.5 font-bold uppercase">{log.language}</td>
-                        <td className="p-2.5 font-mono font-bold text-cyan-300">{log.towerId || '-'}</td>
-                        <td className="p-2.5 font-mono text-[11px] whitespace-nowrap">
+                        <td className="p-3 font-bold uppercase">{log.language}</td>
+                        <td className="p-3 font-mono font-bold text-cyan-300">{log.towerId || '-'}</td>
+                        <td className="p-3 font-mono text-[11px] whitespace-nowrap">
                           <span className="text-white font-bold">{log.voltageV.toFixed(1)}V</span>{' '}
-                          <span className={log.towerStatus === 'ISOLATED' ? 'text-rose-400' : 'text-cyan-400'}>
+                          <span className={log.towerStatus === 'ISOLATED' ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
                             ({log.currentMa.toFixed(1)}mA)
                           </span>
                         </td>
-                        <td className="p-2.5 max-w-[240px] truncate text-slate-300 text-[11px]" title={log.spokenResponse}>
+                        <td className="p-3 max-w-[260px] truncate text-slate-300 text-[11px]" title={log.spokenResponse}>
                           {log.spokenResponse}
                         </td>
                       </tr>
