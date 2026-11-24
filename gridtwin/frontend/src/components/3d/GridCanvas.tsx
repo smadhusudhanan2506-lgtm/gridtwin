@@ -446,37 +446,38 @@ export const GridCanvas: React.FC = () => {
           {/* ─────────────────────────────────────────────────────────── */}
           {/* VISUAL CURRENT BLOCKING BARRIERS AROUND ISOLATED TOWERS      */}
           {/* Blocks power flow into and out of isolated towers           */}
-          {/* When Reverse Feed is ON, cross marks are hidden             */}
+          {/* Shows crisp red XX cross marks on both sides of isolated   */}
+          {/* towers even while Reverse Feed is active                    */}
           {/* ─────────────────────────────────────────────────────────── */}
-          {!isReverseFeedActive && isoList.includes('T1') && (
+          {isoList.includes('T1') && (
             <group>
               <IsolationBarrier3D position={[-41, 10.5, 0]} label="T1 IN-FLOW BLOCKED" />
               <IsolationBarrier3D position={[-23, 10.5, 0]} label="T1 OUT-FLOW BLOCKED" />
             </group>
           )}
 
-          {!isReverseFeedActive && isoList.includes('T2') && (
+          {isoList.includes('T2') && (
             <group>
               <IsolationBarrier3D position={[-23, 10.5, 0]} label="T2 IN-FLOW BLOCKED" />
               <IsolationBarrier3D position={[-5, 10.5, 0]} label="T2 OUT-FLOW BLOCKED" />
             </group>
           )}
 
-          {!isReverseFeedActive && isoList.includes('T3') && (
+          {isoList.includes('T3') && (
             <group>
               <IsolationBarrier3D position={[-5, 10.5, 0]} label="T3 IN-FLOW BLOCKED" />
               <IsolationBarrier3D position={[13, 10.5, 0]} label="T3 OUT-FLOW BLOCKED" />
             </group>
           )}
 
-          {!isReverseFeedActive && isoList.includes('T4') && (
+          {isoList.includes('T4') && (
             <group>
               <IsolationBarrier3D position={[13, 10.5, 0]} label="T4 IN-FLOW BLOCKED" />
               <IsolationBarrier3D position={[31, 10.5, 0]} label="T4 OUT-FLOW BLOCKED" />
             </group>
           )}
 
-          {!isReverseFeedActive && isoList.includes('T5') && (
+          {isoList.includes('T5') && (
             <group>
               <IsolationBarrier3D position={[31, 10.5, 0]} label="T5 IN-FLOW BLOCKED" />
             </group>
