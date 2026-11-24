@@ -109,12 +109,50 @@ export function App() {
   }, [fetchHardwareStatus, handleWebSocketMessage, syncWithBackendData]);
 
   return (
-    <div className="h-screen bg-[#060a16] text-slate-100 flex flex-col font-sans select-none overflow-hidden">
+    <div className="h-screen bg-[#040a1b] text-slate-100 flex flex-col font-sans select-none overflow-hidden relative">
+      {/* Ambient Horizon & Transmission Pylon Silhouette Background matching reference design */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-25">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#030716] via-[#040c24] to-[#020512]" />
+        {/* Horizon Glow at Bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-cyan-950/40 via-blue-950/20 to-transparent" />
+        
+        {/* Left Bottom Silhouette: Transmission Tower & Pine Trees */}
+        <svg className="absolute bottom-0 left-0 w-80 h-48 select-none" viewBox="0 0 320 200" fill="none">
+          <g stroke="#00f0ff" strokeWidth="1.5" opacity="0.6">
+            <line x1="80" y1="200" x2="110" y2="40" />
+            <line x1="140" y1="200" x2="110" y2="40" />
+            <line x1="65" y1="90" x2="155" y2="90" />
+            <line x1="80" y1="125" x2="140" y2="125" />
+            <line x1="90" y1="160" x2="130" y2="160" />
+            <line x1="92" y1="160" x2="128" y2="125" />
+            <line x1="128" y1="160" x2="92" y2="125" />
+          </g>
+          <path d="M 10 200 L 25 140 L 40 200 Z" fill="#030818" stroke="#00f0ff" strokeWidth="0.8" opacity="0.5" />
+          <path d="M 30 200 L 48 130 L 66 200 Z" fill="#030818" stroke="#00f0ff" strokeWidth="0.8" opacity="0.5" />
+          <path d="M 160 200 L 175 145 L 190 200 Z" fill="#030818" stroke="#00f0ff" strokeWidth="0.8" opacity="0.5" />
+        </svg>
+
+        {/* Right Bottom Silhouette: Transmission Towers */}
+        <svg className="absolute bottom-0 right-0 w-80 h-48 select-none" viewBox="0 0 320 200" fill="none">
+          <g stroke="#00f0ff" strokeWidth="1.5" opacity="0.6">
+            <line x1="200" y1="200" x2="230" y2="35" />
+            <line x1="260" y1="200" x2="230" y2="35" />
+            <line x1="185" y1="85" x2="275" y2="85" />
+            <line x1="200" y1="120" x2="260" y2="120" />
+            <line x1="210" y1="155" x2="250" y2="155" />
+            <line x1="212" y1="155" x2="248" y2="120" />
+            <line x1="248" y1="155" x2="212" y2="120" />
+          </g>
+          <path d="M 130 200 L 150 135 L 170 200 Z" fill="#030818" stroke="#00f0ff" strokeWidth="0.8" opacity="0.5" />
+          <path d="M 275 200 L 290 145 L 305 200 Z" fill="#030818" stroke="#00f0ff" strokeWidth="0.8" opacity="0.5" />
+        </svg>
+      </div>
+
       {/* 1. SCADA Global Top Header */}
       <Header />
 
       {/* 2. Main Workspace: Left Sidebar on left, then KPI Bar + Full Width Center Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative z-10">
         {/* Left Navigation Sidebar */}
         <LeftSidebar />
 
@@ -129,7 +167,7 @@ export function App() {
               <GridCanvas />
             </main>
           ) : (
-            <main className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col gap-3.5 sm:gap-5 bg-[#080e21]">
+            <main className="flex-1 overflow-y-auto p-3 sm:p-5 flex flex-col gap-3.5 sm:gap-5 bg-transparent">
               {/* A. DASHBOARD VIEW ("Home"): 2D Schematic + Center Operations Center */}
               {(activeTab === 'dashboard' || (activeTab as any) === 'home') && (
                 <div className="flex flex-col gap-3.5 sm:gap-5">

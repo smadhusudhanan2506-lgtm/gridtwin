@@ -5,13 +5,12 @@ import {
   Clock,
   Wifi,
   WifiOff,
-  Settings,
   User,
-  Bell,
   ChevronDown,
   PhoneCall,
   Menu,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -19,8 +18,6 @@ export const Header: React.FC = () => {
     hardwareDevice,
     hardwareMode,
     setHardwareMode,
-    physicalSyncEnabled,
-    setPhysicalSync,
     isMobileNavOpen,
     toggleMobileNav,
     setActiveTab
@@ -39,7 +36,7 @@ export const Header: React.FC = () => {
   const dateStr = time.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
-    <header className="bg-[#070d1e] border-b border-slate-800/80 text-white px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-4 select-none z-30 shadow-md">
+    <header className="bg-[#050b1a]/95 border-b border-slate-800/80 text-white px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4 select-none z-30 shadow-lg">
       {/* Left: Mobile Menu Toggle + Branding & Status */}
       <div className="flex items-center gap-2 sm:gap-4">
         {/* Mobile Hamburger Drawer Button */}
@@ -52,106 +49,93 @@ export const Header: React.FC = () => {
           {isMobileNavOpen ? <X className="w-5 h-5 text-cyan-400" /> : <Menu className="w-5 h-5 text-cyan-400" />}
         </button>
 
+        {/* Branding: Lightning bolt + GRIDTWIN > Digital Twin for Smart Grid */}
         <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30 shrink-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/40 shrink-0">
             <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-white fill-white" />
           </div>
           <div>
-            <h1 className="text-base sm:text-xl font-black tracking-wider text-white leading-tight">
-              GRIDTWIN
-            </h1>
+            <div className="flex items-center gap-1.5 leading-tight">
+              <h1 className="text-base sm:text-lg font-black tracking-wider text-white">
+                GRIDTWIN
+              </h1>
+              <span className="text-cyan-400 text-sm font-black">&gt;</span>
+            </div>
             <p className="hidden xs:block text-[10px] sm:text-xs text-slate-300 font-semibold leading-none mt-0.5">
-              Distribution Digital Twin Lab
+              Digital Twin for Smart Grid
             </p>
           </div>
         </div>
 
         {/* System Online Pill Badge */}
-        <div className="hidden xl:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 text-xs font-extrabold shadow-inner">
+        <div className="hidden xl:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/60 text-emerald-300 text-xs font-black shadow-[0_0_12px_rgba(16,185,129,0.25)]">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
           <span>System Online</span>
         </div>
       </div>
 
-      {/* Center: Live Digital Clock (Shown on tablets and laptops) */}
+      {/* Center: Live Digital Clock with Circular Clock Icon */}
       <div className="hidden md:flex items-center gap-2.5 text-slate-300 font-mono">
         <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-        <div className="flex flex-col text-left leading-tight">
-          <span className="text-xs sm:text-sm md:text-base font-extrabold text-white tracking-wide">{timeStr}</span>
-          <span className="hidden lg:inline text-[10px] sm:text-xs text-slate-300 font-medium">{dateStr}</span>
+        <div className="flex items-center gap-2 leading-tight">
+          <span className="text-xs sm:text-sm md:text-base font-black text-white tracking-wide">{timeStr}</span>
+          <span className="hidden lg:inline text-xs sm:text-sm text-slate-300 font-semibold">{dateStr}</span>
         </div>
       </div>
 
-      {/* Right: ESP32 Hardware Status, Mode, and Profile */}
-      <div className="flex items-center gap-1.5 sm:gap-3">
-        {/* Toll-Free Hotline Helpline Pill */}
+      {/* Right: Helpline, Mode Selector, Hardware Connectivity, and User Profile */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Toll-Free Helpline Pill */}
         <button
           onClick={() => setActiveTab('toll-free')}
-          className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/50 text-indigo-300 text-xs font-mono font-bold transition-all shadow-inner cursor-pointer"
-          title="Open Toll-Free Voice Hotline & Access Control"
+          className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0c1836] hover:bg-blue-950/90 border border-blue-500/50 text-blue-300 text-xs font-mono font-bold transition-all shadow-[0_0_10px_rgba(59,130,246,0.15)] cursor-pointer"
+          title="Open 24/7 Toll-Free Voice Hotline & Access Control"
         >
-          <PhoneCall className="w-3.5 h-3.5 text-indigo-400" />
+          <PhoneCall className="w-3.5 h-3.5 text-blue-400" />
           <span>+1 573 859 5176 Helpline</span>
         </button>
 
-        {/* Mode Selector Pill */}
+        {/* Mode Selector Pill (Real Hardware / Simulation) */}
         <button
           onClick={() => setHardwareMode(hardwareMode === 'PHYSICAL' ? 'SIMULATION' : 'PHYSICAL')}
-          className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs font-mono font-bold transition-all border ${
-            hardwareMode === 'PHYSICAL'
-              ? 'bg-cyan-950/80 border-cyan-500/50 text-cyan-300 hover:bg-cyan-900/70'
-              : 'bg-amber-950/80 border-amber-500/50 text-amber-300 hover:bg-amber-900/70'
-          }`}
-          title="Click to toggle Physical Hardware vs Simulation Mode"
+          className="flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full text-xs font-mono font-bold transition-all border bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)] hover:bg-emerald-900/60 cursor-pointer"
+          title="Toggle Hardware Mode"
         >
-          <span
-            className={`w-2 h-2 rounded-full ${
-              hardwareMode === 'PHYSICAL' ? 'bg-cyan-400' : 'bg-amber-400'
-            }`}
-          />
-          <span className="hidden sm:inline">{hardwareMode === 'PHYSICAL' ? 'REAL HARDWARE' : 'SIMULATION'}</span>
-          <span className="sm:hidden">{hardwareMode === 'PHYSICAL' ? 'HW' : 'SIM'}</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>{hardwareMode === 'PHYSICAL' ? 'REAL HARDWARE' : 'SIMULATION'}</span>
         </button>
 
         {/* ESP32 Connectivity Pill */}
         <div
-          className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-full border text-xs font-mono font-bold ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-bold ${
             hardwareDevice.status === 'ONLINE'
-              ? 'bg-slate-900/90 border-emerald-500/50 text-emerald-400'
-              : 'bg-slate-900/90 border-rose-500/50 text-rose-400'
+              ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+              : 'bg-rose-950/60 border-rose-500/60 text-rose-300 shadow-[0_0_10px_rgba(239,68,68,0.2)]'
           }`}
-          title={hardwareDevice.status === 'ONLINE' ? 'ESP32 Connected via MQTT' : 'ESP32 Device Offline'}
+          title={hardwareDevice.status === 'ONLINE' ? 'ESP32 Connected via MQTT' : 'ESP32 Device Standby'}
         >
           {hardwareDevice.status === 'ONLINE' ? (
             <Wifi className="w-3.5 h-3.5 text-emerald-400" />
           ) : (
             <WifiOff className="w-3.5 h-3.5 text-rose-400" />
           )}
-          <span className="hidden sm:inline text-slate-100 font-bold">
-            {hardwareDevice.status === 'ONLINE'
-              ? `ESP32 (${hardwareDevice.roundtrip_latency_ms || 18}ms)`
-              : 'ESP32 OFFLINE'}
+          <span className="text-white font-bold tracking-tight">
+            {hardwareDevice.status === 'ONLINE' ? 'ESP32 ONLINE' : 'ESP32 OFFLINE'}
           </span>
-          <span className="sm:hidden text-slate-100 font-bold">
-            {hardwareDevice.status === 'ONLINE' ? 'ESP32' : 'OFFLINE'}
-          </span>
-          <span
-            className={`w-2 h-2 rounded-full ${
-              hardwareDevice.status === 'ONLINE' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
-            }`}
-          />
+          {hardwareDevice.status !== 'ONLINE' && (
+            <Lock className="w-3 h-3 text-rose-400 ml-0.5" />
+          )}
         </div>
 
-        {/* User Profile Avatar */}
-        <div className="flex items-center gap-1.5 pl-1 cursor-pointer">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/30">
+        {/* User Profile Avatar with Name & Chevron */}
+        <div className="flex items-center gap-1.5 pl-1 cursor-pointer group">
+          <div className="w-8 h-8 rounded-full bg-blue-600 border border-blue-400 flex items-center justify-center text-white shadow-md shadow-blue-600/40 group-hover:scale-105 transition-transform">
             <User className="w-4 h-4 text-white" />
           </div>
           <span className="text-xs sm:text-sm font-bold text-white hidden md:inline tracking-wide">Madhu</span>
-          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white transition-colors" />
         </div>
       </div>
     </header>
   );
 };
-

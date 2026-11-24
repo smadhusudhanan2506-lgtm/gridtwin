@@ -9,10 +9,10 @@ import {
   Bell,
   BarChart3,
   Settings,
-  Zap,
-  GitFork,
   X,
-  PhoneCall
+  PhoneCall,
+  TowerControl,
+  Atom
 } from 'lucide-react';
 
 export const LeftSidebar: React.FC = () => {
@@ -23,7 +23,7 @@ export const LeftSidebar: React.FC = () => {
     { id: '3d-twin', label: '3D Lab', icon: Box, badge: null },
     { id: 'sld', label: '2D Lab', icon: Layers, badge: null },
     { id: 'toll-free', label: 'Toll-Free', icon: PhoneCall, badge: 'HOTLINE' },
-    { id: 'overview', label: 'Grid Overview', icon: GitFork, badge: null },
+    { id: 'overview', label: 'Grid Overview', icon: TowerControl, badge: null },
     { id: 'monitoring', label: 'Monitoring', icon: Activity, badge: null },
     { id: 'hardware', label: 'Devices', icon: Cpu, badge: null },
     { id: 'alerts', label: 'Alerts', icon: Bell, badge: '2' },
@@ -65,10 +65,10 @@ export const LeftSidebar: React.FC = () => {
             <button
               key={item.id}
               onClick={() => handleNavClick(item.id)}
-              className={`w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-sm sm:text-base font-bold transition-all duration-200 group ${
+              className={`w-full flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl text-sm sm:text-base font-bold transition-all duration-200 group cursor-pointer ${
                 isActive
-                  ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-900/70'
+                  ? 'bg-[#1d64ec] text-white shadow-[0_0_22px_rgba(29,100,236,0.55)] border border-blue-400/30'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-900/60'
               }`}
             >
               <div className="flex items-center gap-3 sm:gap-3.5">
@@ -81,7 +81,7 @@ export const LeftSidebar: React.FC = () => {
               </div>
 
               {item.badge && (
-                <span className="text-xs font-black px-2 py-0.5 rounded-full bg-rose-500 text-white shadow-sm">
+                <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-rose-500 text-white shadow-sm shadow-rose-900/40">
                   {item.badge}
                 </span>
               )}
@@ -92,13 +92,13 @@ export const LeftSidebar: React.FC = () => {
 
       {/* Sidebar Bottom Widgets */}
       <div className="mt-auto flex flex-col gap-2.5 pt-4">
-        {/* Project Card */}
-        <div className="bg-[#0b132b]/90 border border-slate-800/90 rounded-2xl p-3 sm:p-3.5 shadow-md">
+        {/* Project Card matching mockup */}
+        <div className="bg-[#081329]/90 border border-slate-800/90 rounded-2xl p-3 sm:p-3.5 shadow-md">
           <div className="flex items-center gap-2 mb-1">
-            <Layers className="w-4 h-4 text-cyan-400" />
+            <Atom className="w-4 h-4 text-purple-400" />
             <span className="text-xs sm:text-sm font-black text-slate-200 tracking-wide">Project</span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-200 font-semibold">
+          <p className="text-xs text-slate-200 font-bold">
             Distribution Digital Twin Lab
           </p>
           <span className="text-xs text-slate-400 font-mono block mt-1">
@@ -106,8 +106,8 @@ export const LeftSidebar: React.FC = () => {
           </span>
         </div>
 
-        {/* System Running Pill */}
-        <div className="bg-[#0b132b]/90 border border-slate-800/90 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between shadow-md">
+        {/* System Running Pill matching mockup */}
+        <div className="bg-[#081329]/90 border border-slate-800/90 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between shadow-md">
           <div>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -129,43 +129,44 @@ export const LeftSidebar: React.FC = () => {
 
   return (
     <>
-      {/* 1. Desktop & Laptop Sidebar (Fixed side navigation on lg screens) */}
-      <aside className="hidden lg:flex w-64 shrink-0 bg-[#070d1e] border-r border-slate-800/80 flex-col justify-between py-5 px-3.5 select-none overflow-y-auto">
+      {/* Desktop Persistent Sidebar */}
+      <aside className="hidden lg:flex flex-col w-64 bg-[#050b1a]/95 border-r border-slate-800/80 p-3 sm:p-4 select-none shrink-0 relative z-20">
         {renderNavContent()}
       </aside>
 
-      {/* 2. Mobile & Tablet Slide-Over Drawer Navigation */}
+      {/* Mobile Drawer Backdrop */}
       {isMobileNavOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden flex">
-          {/* Backdrop overlay */}
-          <div
-            className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
-            onClick={() => setMobileNavOpen(false)}
-          />
-
-          {/* Drawer container */}
-          <aside className="relative w-72 max-w-[85vw] bg-[#070d1e] border-r border-slate-800 flex flex-col justify-between p-4 sm:p-5 select-none z-10 shadow-2xl overflow-y-auto h-full">
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-800/80">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
-                  <Zap className="w-4 h-4 text-white fill-white" />
-                </div>
-                <span className="font-black text-sm tracking-wider text-white">NAVIGATION</span>
-              </div>
-              <button
-                onClick={() => setMobileNavOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                title="Close Navigation Drawer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {renderNavContent()}
-          </aside>
-        </div>
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => setMobileNavOpen(false)}
+        />
       )}
+
+      {/* Mobile Off-canvas Slide-over Drawer */}
+      <div
+        className={`fixed top-0 bottom-0 left-0 w-72 bg-[#050b1a] border-r border-slate-800 z-50 p-4 flex flex-col justify-between transform transition-transform duration-300 ease-in-out lg:hidden ${
+          isMobileNavOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
+              <span className="text-xs font-black text-white">GT</span>
+            </div>
+            <span className="font-black text-white text-base">Navigation</span>
+          </div>
+          <button
+            onClick={() => setMobileNavOpen(false)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto flex flex-col">
+          {renderNavContent()}
+        </div>
+      </div>
     </>
   );
 };
