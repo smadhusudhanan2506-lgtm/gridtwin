@@ -29,8 +29,17 @@ NEURAL_VOICES = {
 }
 
 # Directory to cache generated mp3 files
-AUDIO_CACHE_DIR = os.path.join(os.path.dirname(__file__), "static", "audio_cache")
-os.makedirs(AUDIO_CACHE_DIR, exist_ok=True)
+is_serverless = bool(os.getenv("VERCEL")) or not os.access(os.path.dirname(__file__), os.W_OK)
+if is_serverless:
+    AUDIO_CACHE_DIR = "/tmp/audio_cache"
+else:
+    AUDIO_CACHE_DIR = os.path.join(os.path.dirname(__file__), "static", "audio_cache")
+
+try:
+    os.makedirs(AUDIO_CACHE_DIR, exist_ok=True)
+except Exception:
+    AUDIO_CACHE_DIR = "/tmp/audio_cache"
+    os.makedirs(AUDIO_CACHE_DIR, exist_ok=True)
 
 
 def get_audio_filename(text: str, voice: str) -> str:

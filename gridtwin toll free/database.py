@@ -11,7 +11,18 @@ import sqlite3
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "call_logs.db")
+is_serverless = bool(os.getenv("VERCEL")) or not os.access(os.path.dirname(__file__), os.W_OK)
+if is_serverless:
+    DB_PATH = "/tmp/call_logs.db"
+    orig_db = os.path.join(os.path.dirname(__file__), "call_logs.db")
+    if not os.path.exists(DB_PATH) and os.path.exists(orig_db):
+        try:
+            import shutil
+            shutil.copy2(orig_db, DB_PATH)
+        except Exception:
+            pass
+else:
+    DB_PATH = os.path.join(os.path.dirname(__file__), "call_logs.db")
 
 
 def get_connection():
