@@ -30,7 +30,16 @@ import httpx
 from config import PORT, HOST, TOLL_FREE_NUMBER, TOLL_FREE_E164, LANGUAGES, TOWERS
 from gridtwin_client import gridtwin_client
 from tts_service import generate_speech_file, pregenerate_standard_prompts
-from database import log_call, get_call_logs, clear_call_logs
+from database import (
+    log_call,
+    get_call_logs,
+    clear_call_logs,
+    check_caller_authorization,
+    get_registered_numbers,
+    add_registered_number,
+    set_number_status,
+    delete_registered_number
+)
 from audio_messages import (
     WELCOME_PROMPTS,
     TOWER_SELECTION_PROMPTS,
@@ -38,6 +47,8 @@ from audio_messages import (
     MENU_OPTIONS_PROMPTS,
     GOODBYE_PROMPTS,
     TIMEOUT_PROMPTS,
+    ACCESS_DENIED_UNREGISTERED_PROMPTS,
+    ACCESS_DENIED_BLOCKED_PROMPTS,
     build_tower_status_message,
     VOICE_CONFIG
 )
@@ -105,16 +116,56 @@ def twiml_response(xml_body: str) -> Response:
 # ══════════════════════════════════════════════════════
 
 @app.api_route("/ivr/welcome", methods=["GET", "POST"])
-async def ivr_welcome():
+async def ivr_welcome(request: Request):
     """
-    Step 1: Inbound Call Entry Point.
-    Welcomes caller and requests language selection:
-      - 1 for Tamil
-      - 2 for English
-      - 3 for Hindi
+    Step 1: Inbound Call Entry Point with Registered Caller Verification.
+    Only registered authorized numbers can connect.
+    If unregistered or blocked: connection is rejected and disconnected immediately.
     """
-    logger.info("Inbound call received at /ivr/welcome")
-    
+    form_data = await request.form() if request.method == "POST" else {}
+    caller_number = (
+        form_data.get("From") or 
+        form_data.get("Caller") or 
+        request.query_params.get("From") or 
+        request.query_params.get("Caller") or 
+        ""
+    )
+    call_sid = form_data.get("CallSid") or request.query_params.get("CallSid")
+
+    logger.info(f"Inbound call received at /ivr/welcome from: '{caller_number}' (CallSid: {call_sid})")
+
+    # Access Control Verification: Check if caller number is registered and active
+    if caller_number:
+        auth = check_caller_authorization(caller_number)
+        if not auth["authorized"]:
+            reason = auth["status"] # 'UNREGISTERED' or 'BLOCKED'
+            caller_name = auth.get("caller_info", {}).get("display_name") if auth.get("caller_info") else "Unregistered Caller"
+            logger.warning(f"ACCESS DENIED for caller '{caller_number}' ({caller_name}): Reason = {reason}")
+
+            # Log rejected call in database
+            try:
+                log_call(
+                    caller_number=str(caller_number),
+                    caller_name=caller_name,
+                    call_type="TWILIO_INBOUND",
+                    spoken_response=f"ACCESS DENIED: {auth['message']}",
+                    call_sid=str(call_sid) if call_sid else None,
+                    status=f"REJECTED_{reason}"
+                )
+            except Exception as db_err:
+                logger.error(f"Error logging rejected call to DB: {db_err}")
+
+            # Speak Access Denied in English, Tamil, and Hindi then Hangup
+            prompts = ACCESS_DENIED_BLOCKED_PROMPTS if reason == "BLOCKED" else ACCESS_DENIED_UNREGISTERED_PROMPTS
+            xml = f"""
+            <Say voice="Google.en-IN-Standard-A" language="en-IN">{prompts['en']}</Say>
+            <Say voice="Google.ta-IN-Standard-A" language="ta-IN">{prompts['ta']}</Say>
+            <Say voice="Google.hi-IN-Standard-A" language="hi-IN">{prompts['hi']}</Say>
+            <Hangup/>
+            """
+            return twiml_response(xml)
+
+    # Authorized Caller: Welcome and request language selection
     xml = """
     <Gather numDigits="1" action="/ivr/language-selected" method="POST" timeout="8">
         <Play>https://gridtwin-toll-free.onrender.com/static/audio/welcome_all.mp3</Play>
@@ -225,8 +276,11 @@ async def ivr_tower_selected(
         form_data = await request.form() if request.method == "POST" else {}
         caller_number = form_data.get("From") or form_data.get("Caller") or request.query_params.get("From") or "+1 573 859 5176 (Direct Call)"
         call_sid = form_data.get("CallSid") or request.query_params.get("CallSid")
+        auth = check_caller_authorization(str(caller_number))
+        caller_name = auth.get("caller_info", {}).get("display_name") if auth.get("caller_info") else "Direct Inbound"
         log_call(
             caller_number=str(caller_number),
+            caller_name=caller_name,
             call_type="TWILIO_INBOUND",
             language=lang,
             tower_id=f"T{selected_digit}",
@@ -353,17 +407,61 @@ async def tts_speak(text: str = Query(...), lang: str = Query("en")):
 
 
 @app.post("/api/simulator/call")
-async def simulator_start_call():
-    """Initiates a virtual phone call in the web simulator with real neural voice audio."""
+async def simulator_start_call(payload: Optional[dict] = None):
+    """
+    Initiates a virtual phone call in the web simulator with real neural voice audio.
+    Enforces registered phone number verification. Unregistered or blocked callers are rejected.
+    """
+    if payload is None:
+        payload = {}
+    caller_number = payload.get("caller_number", "+15738595176")
+
+    # Access Control Verification
+    auth = check_caller_authorization(caller_number)
+    if not auth["authorized"]:
+        reason = auth["status"] # 'UNREGISTERED' or 'BLOCKED'
+        caller_name = auth.get("caller_info", {}).get("display_name") if auth.get("caller_info") else "Unregistered Caller"
+        prompts = ACCESS_DENIED_BLOCKED_PROMPTS if reason == "BLOCKED" else ACCESS_DENIED_UNREGISTERED_PROMPTS
+        denied_text = prompts["en"]
+
+        try:
+            log_call(
+                caller_number=str(caller_number),
+                caller_name=caller_name,
+                call_type="WEB_SIMULATOR",
+                spoken_response=f"ACCESS DENIED ({reason}): {denied_text}",
+                status=f"REJECTED_{reason}"
+            )
+        except Exception as db_err:
+            logger.error(f"Error logging rejected simulator call: {db_err}")
+
+        audio_url = await generate_speech_file(denied_text, "en")
+        return {
+            "status": "rejected",
+            "authorized": False,
+            "reason": reason,
+            "caller_number": caller_number,
+            "caller_name": caller_name,
+            "display_text": f"❌ ACCESS DENIED ({reason})\n\n{denied_text}\n\n[ACCESS CONTROL RULE]\nToll-Free SCADA Hotline only accepts calls from registered active phone numbers. Contact Grid Administration to authorize your number.",
+            "audio_url": audio_url,
+            "speech": {"lang": "en-IN", "text": denied_text}
+        }
+
+    # Caller is Authorized and Active
+    caller_info = auth.get("caller_info") or {}
     ta_audio = await generate_speech_file(WELCOME_PROMPTS[0]["text"], "ta")
     en_audio = await generate_speech_file(WELCOME_PROMPTS[1]["text"], "en")
     hi_audio = await generate_speech_file(WELCOME_PROMPTS[2]["text"], "hi")
 
     return {
         "status": "connected",
+        "authorized": True,
+        "caller_number": caller_number,
+        "caller_name": caller_info.get("display_name", "Authorized Caller"),
         "call_state": "LANGUAGE_SELECTION",
         "prompts": WELCOME_PROMPTS,
         "display_text": (
+            f"✔ CALL CONNECTED — {caller_info.get('display_name', 'Authorized Caller')}\n\n"
             "Welcome to GridTwin Toll-Free Service.\n"
             "Press 1 for Tamil (தமிழ்)\n"
             "Press 2 for English\n"
@@ -381,11 +479,12 @@ async def simulator_start_call():
 async def simulator_send_dtmf(payload: dict):
     """
     Simulates DTMF keypress in the Webphone dialpad and returns real neural audio.
-    Payload: { "digit": "1", "stage": "LANGUAGE_SELECTION" | "TOWER_SELECTION" | "MENU_OPTIONS", "lang": "en" }
+    Payload: { "digit": "1", "stage": "LANGUAGE_SELECTION" | "TOWER_SELECTION" | "MENU_OPTIONS", "lang": "en", "caller_number": "+..." }
     """
     digit = str(payload.get("digit", "")).strip()
     stage = payload.get("stage", "LANGUAGE_SELECTION")
     current_lang = payload.get("lang", "en")
+    caller_phone = payload.get("caller_number", "+15738595176")
 
     # 1. Stage: Language Selection
     if stage == "LANGUAGE_SELECTION":
@@ -439,9 +538,11 @@ async def simulator_send_dtmf(payload: dict):
         
         # Log simulator interaction and response to SQLite Database
         try:
-            caller_phone = payload.get("caller_number", "Webphone Simulator (+1 573 859 5176)")
+            auth = check_caller_authorization(str(caller_phone))
+            caller_name = auth.get("caller_info", {}).get("display_name") if auth.get("caller_info") else "Webphone Simulator"
             log_call(
                 caller_number=str(caller_phone),
+                caller_name=caller_name,
                 call_type="WEB_SIMULATOR",
                 language=current_lang,
                 tower_id=f"T{digit}",
@@ -489,7 +590,7 @@ async def simulator_send_dtmf(payload: dict):
             }
         elif digit == "9":
             # Change language
-            return await simulator_start_call()
+            return await simulator_start_call({"caller_number": caller_phone})
         else:
             # Goodbye & Hangup
             goodbye_text = GOODBYE_PROMPTS.get(current_lang, GOODBYE_PROMPTS["en"])
@@ -502,6 +603,8 @@ async def simulator_send_dtmf(payload: dict):
                 "audio_url": audio_url,
                 "speech": {"lang": voice_cfg["language"], "text": goodbye_text}
             }
+
+    return {"error": "Unknown stage"}
 
     return {"error": "Unknown stage"}
 
@@ -529,7 +632,68 @@ async def clear_call_logs_api():
 
 
 # ══════════════════════════════════════════════════════
-# 3. STATIC FILES & WEBPHONE DASHBOARD
+# 3. REGISTERED NUMBERS & ACCESS CONTROL MANAGEMENT API
+# ══════════════════════════════════════════════════════
+
+@app.get("/api/registered-numbers")
+async def get_registered_numbers_api():
+    """Retrieve list of all authorized telephone numbers (whitelist & blocklist)."""
+    numbers = get_registered_numbers()
+    return {
+        "success": True,
+        "count": len(numbers),
+        "numbers": numbers
+    }
+
+
+@app.post("/api/registered-numbers")
+async def add_registered_number_api(payload: dict):
+    """
+    Register a new authorized caller phone number.
+    Payload: { "phone_number": "+91...", "display_name": "...", "role": "OPERATOR", "status": "ACTIVE", "notes": "" }
+    """
+    phone = payload.get("phone_number", "").strip()
+    name = payload.get("display_name", "").strip()
+    role = payload.get("role", "OPERATOR").strip()
+    status = payload.get("status", "ACTIVE").strip().upper()
+    notes = payload.get("notes", "").strip()
+
+    if not phone or not name:
+        return JSONResponse(status_code=400, content={"success": False, "error": "Phone number and Display Name are required."})
+
+    res = add_registered_number(phone, name, role, status, notes)
+    return res
+
+
+@app.post("/api/registered-numbers/{phone_number}/block")
+async def block_registered_number_api(phone_number: str):
+    """Block an authorized phone number so their calls are rejected."""
+    success = set_number_status(phone_number, "BLOCKED")
+    if success:
+        return {"success": True, "message": f"Number {phone_number} is now BLOCKED."}
+    return JSONResponse(status_code=404, content={"success": False, "error": f"Phone number {phone_number} not found."})
+
+
+@app.post("/api/registered-numbers/{phone_number}/unblock")
+async def unblock_registered_number_api(phone_number: str):
+    """Unblock a registered phone number restoring call reception."""
+    success = set_number_status(phone_number, "ACTIVE")
+    if success:
+        return {"success": True, "message": f"Number {phone_number} is now UNBLOCKED (ACTIVE)."}
+    return JSONResponse(status_code=404, content={"success": False, "error": f"Phone number {phone_number} not found."})
+
+
+@app.delete("/api/registered-numbers/{phone_number}")
+async def delete_registered_number_api(phone_number: str):
+    """Delete a phone number from the access registry."""
+    success = delete_registered_number(phone_number)
+    if success:
+        return {"success": True, "message": f"Number {phone_number} deleted from registry."}
+    return JSONResponse(status_code=404, content={"success": False, "error": f"Phone number {phone_number} not found."})
+
+
+# ══════════════════════════════════════════════════════
+# 4. STATIC FILES & WEBPHONE DASHBOARD
 # ══════════════════════════════════════════════════════
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")

@@ -103,6 +103,20 @@ TIMEOUT_PROMPTS = {
     "hi": "कोई इनपुट प्राप्त नहीं हुआ। कृपया पुनः प्रयास करें।"
 }
 
+# Access Denied: Unregistered Phone Number
+ACCESS_DENIED_UNREGISTERED_PROMPTS = {
+    "en": "Access Denied. Your telephone number is not registered on the GridTwin authorized personnel list. Call disconnected.",
+    "ta": "அனுமதி மறுக்கப்பட்டது. உங்கள் தொலைபேசி எண் அங்கீகரிக்கப்பட்ட பட்டியலில் பதிவு செய்யப்படவில்லை. இணைப்பு துண்டிக்கப்படுகிறது.",
+    "hi": "प्रवेश अस्वीकृत। आपका फ़ोन नंबर ग्रिडट्विन अधिकृत सूची में पंजीकृत नहीं है। कॉल समाप्त की जा रही है।"
+}
+
+# Access Denied: Blocked Phone Number
+ACCESS_DENIED_BLOCKED_PROMPTS = {
+    "en": "Access Denied. Your registered telephone number has been temporarily blocked by grid security administration. Call disconnected.",
+    "ta": "அனுமதி மறுக்கப்பட்டது. உங்கள் பதிவு செய்யப்பட்ட தொலைபேசி எண் நிர்வாகத்தால் முடக்கப்பட்டுள்ளது. இணைப்பு துண்டிக்கப்படுகிறது.",
+    "hi": "प्रवेश अस्वीकृत। आपका पंजीकृत फ़ोन नंबर सुरक्षा प्रशासन द्वारा ब्लॉक कर दिया गया है। कॉल समाप्त की जा रही है।"
+}
+
 
 def build_tower_status_message(tower_data: Dict[str, Any], lang: str = "en") -> str:
     """

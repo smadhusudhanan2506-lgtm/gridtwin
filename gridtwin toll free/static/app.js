@@ -30,6 +30,23 @@ const transcriptLog = document.getElementById("transcriptLog");
 const towerCardsContainer = document.getElementById("towerCardsContainer");
 const btnClearLog = document.getElementById("btnClearLog");
 
+// Caller Identity & Access Control Elements
+const selCallerNumber = document.getElementById("selCallerNumber");
+const txtCustomCaller = document.getElementById("txtCustomCaller");
+const btnSetCustomCaller = document.getElementById("btnSetCustomCaller");
+const badgeCallerType = document.getElementById("badgeCallerType");
+const frmAddNumber = document.getElementById("frmAddNumber");
+const txtRegPhone = document.getElementById("txtRegPhone");
+const txtRegName = document.getElementById("txtRegName");
+const selRegRole = document.getElementById("selRegRole");
+const tblRegisteredBody = document.getElementById("tblRegisteredBody");
+const statTotalRegistered = document.getElementById("statTotalRegistered");
+const statActiveRegistered = document.getElementById("statActiveRegistered");
+const statBlockedRegistered = document.getElementById("statBlockedRegistered");
+
+let currentCallerNumber = "+15738595176";
+let registeredNumbersCache = [];
+
 // DTMF Frequencies (Row & Col)
 const DTMF_FREQS = {
   "1": [697, 1209], "2": [697, 1336], "3": [697, 1477],
@@ -193,14 +210,46 @@ function stopTimer() {
 
 async function startCall() {
   try {
-    addTranscript("caller", "📞 Dialing +1 573 859 5176 (Toll-Free)...");
-    if (callStatusText) callStatusText.textContent = "Calling...";
+    const callerNumber = selCallerNumber ? selCallerNumber.value : (currentCallerNumber || "+15738595176");
+    currentCallerNumber = callerNumber;
+
+    addTranscript("caller", `📞 Calling +1 573 859 5176 from [${callerNumber}]...`);
+    if (callStatusText) callStatusText.textContent = "Connecting hotline...";
     if (callStatusDot) callStatusDot.className = "status-dot-green pulsing";
     btnStartCall.disabled = true;
     btnHangup.disabled = false;
 
-    const res = await fetch("/api/simulator/call", { method: "POST" });
+    const res = await fetch("/api/simulator/call", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ caller_number: callerNumber })
+    });
     const data = await res.json();
+
+    // Check Access Authorization Status
+    if (data.status === "rejected" || !data.authorized) {
+      callActive = false;
+      stopTimer();
+      if (callStatusText) callStatusText.textContent = `Call Rejected (${data.reason})`;
+      if (callStatusDot) callStatusDot.className = "status-dot-green";
+      if (phoneDisplayText) phoneDisplayText.textContent = data.display_text;
+
+      addTranscript("alert", `❌ ACCESS DENIED: ${data.caller_name || callerNumber} (${data.reason})`);
+      addTranscript("ivr", data.speech?.text || data.display_text);
+
+      btnStartCall.disabled = false;
+      btnHangup.disabled = true;
+
+      if (chkAudioSpeech && chkAudioSpeech.checked && data.speech) {
+        playRealVoice(data.audio_url, data.speech.text, data.speech.lang, () => {
+          setTimeout(hangupCall, 2000);
+        });
+      } else {
+        setTimeout(hangupCall, 3500);
+      }
+      fetchCallLogs();
+      return;
+    }
 
     callActive = true;
     startTimer();
@@ -208,12 +257,13 @@ async function startCall() {
     currentStage = "LANGUAGE_SELECTION";
     if (phoneDisplayText) phoneDisplayText.textContent = data.display_text;
 
-    addTranscript("ivr", "Connected to GRIDTWIN 24/7 Hotline.");
+    addTranscript("ivr", `Connected: ${data.caller_name || "Authorized Caller"}`);
     addTranscript("ivr", "Prompt: 1 for Tamil | 2 for English | 3 for Hindi");
 
     if (chkAudioSpeech && chkAudioSpeech.checked && data.speech_prompts) {
       playWelcomeSequence(data.speech_prompts);
     }
+    fetchCallLogs();
 
   } catch (err) {
     console.error("Call error:", err);
@@ -267,7 +317,8 @@ async function handleKeyPress(key) {
     const payload = {
       digit: key,
       stage: currentStage,
-      lang: selectedLanguage
+      lang: selectedLanguage,
+      caller_number: currentCallerNumber
     };
 
     const res = await fetch("/api/simulator/dtmf", {
@@ -571,6 +622,216 @@ if (btnClearLog) {
 }
 
 // ──────────────────────────────────────────────
+// Authorized Numbers Management & Access Control
+// ──────────────────────────────────────────────
+
+async function fetchRegisteredNumbers() {
+  try {
+    const res = await fetch("/api/registered-numbers");
+    if (!res.ok) return;
+    const data = await res.json();
+    registeredNumbersCache = data.numbers || [];
+    renderRegisteredNumbersTable(registeredNumbersCache);
+    updateCallerSelectOptions(registeredNumbersCache);
+  } catch (e) {
+    console.debug("Failed to fetch registered numbers:", e);
+  }
+}
+
+function updateCallerSelectOptions(numbers) {
+  if (!selCallerNumber) return;
+  const currentVal = selCallerNumber.value;
+  let optionsHtml = "";
+
+  for (const item of numbers) {
+    const isBlocked = (item.status === "BLOCKED");
+    const statusTag = isBlocked ? " [BLOCKED ⛔]" : " [ACTIVE ✔]";
+    const icon = isBlocked ? "🚫 " : "📱 ";
+    optionsHtml += `<option value="${escapeHtml(item.phone_number)}" ${item.phone_number === currentVal ? "selected" : ""}>
+      ${icon}${escapeHtml(item.phone_number)} (${escapeHtml(item.display_name)}) ${statusTag}
+    </option>`;
+  }
+
+  // Add test unregistered numbers for testing call rejection
+  optionsHtml += `
+    <option value="+919999900000" ${currentVal === "+919999900000" ? "selected" : ""}>
+      ⛔ +91 99999 00000 (Unregistered Stranger - Test Rejection)
+    </option>
+    <option value="+18000009999" ${currentVal === "+18000009999" ? "selected" : ""}>
+      ⛔ +1 800 000 9999 (Unregistered International - Test Rejection)
+    </option>
+  `;
+
+  selCallerNumber.innerHTML = optionsHtml;
+  updateCallerBadge();
+}
+
+function updateCallerBadge() {
+  if (!selCallerNumber || !badgeCallerType) return;
+  const selectedPhone = selCallerNumber.value;
+  const matched = registeredNumbersCache.find(r => r.phone_number === selectedPhone);
+
+  badgeCallerType.className = "caller-id-badge";
+  if (!matched) {
+    badgeCallerType.classList.add("unregistered");
+    badgeCallerType.textContent = "Unregistered";
+  } else if (matched.status === "BLOCKED") {
+    badgeCallerType.classList.add("blocked");
+    badgeCallerType.textContent = "Blocked";
+  } else {
+    badgeCallerType.textContent = "Authorized (Active)";
+  }
+}
+
+if (selCallerNumber) {
+  selCallerNumber.addEventListener("change", () => {
+    currentCallerNumber = selCallerNumber.value;
+    updateCallerBadge();
+  });
+}
+
+if (btnSetCustomCaller && txtCustomCaller) {
+  btnSetCustomCaller.addEventListener("click", () => {
+    const custom = txtCustomCaller.value.trim();
+    if (!custom) return;
+    currentCallerNumber = custom;
+    let opt = Array.from(selCallerNumber.options).find(o => o.value === custom);
+    if (!opt) {
+      opt = document.createElement("option");
+      opt.value = custom;
+      opt.textContent = `Custom: ${custom}`;
+      selCallerNumber.appendChild(opt);
+    }
+    selCallerNumber.value = custom;
+    updateCallerBadge();
+    addTranscript("system", `Caller identity set to custom: ${custom}`);
+  });
+}
+
+function renderRegisteredNumbersTable(numbers) {
+  if (!tblRegisteredBody) return;
+
+  let total = numbers.length;
+  let active = 0;
+  let blocked = 0;
+
+  if (numbers.length === 0) {
+    tblRegisteredBody.innerHTML = `
+      <tr class="empty-row">
+        <td colspan="6">No authorized numbers found. Register a number using the form above.</td>
+      </tr>
+    `;
+  } else {
+    let rows = "";
+    for (const r of numbers) {
+      const isBlocked = (r.status === "BLOCKED");
+      if (isBlocked) blocked++; else active++;
+
+      const statusBadge = isBlocked 
+        ? `<span class="badge-status-blocked">● BLOCKED</span>`
+        : `<span class="badge-status-active">● ACTIVE</span>`;
+
+      const actionBtn = isBlocked
+        ? `<button class="btn-reg-action btn-unblock" onclick="toggleNumberStatus('${escapeHtml(r.phone_number)}', 'ACTIVE')">✔ Unblock</button>`
+        : `<button class="btn-reg-action btn-block" onclick="toggleNumberStatus('${escapeHtml(r.phone_number)}', 'BLOCKED')">⛔ Block</button>`;
+
+      rows += `
+        <tr>
+          <td style="font-family: var(--font-mono); font-weight: 700; color: #38bdf8;">${escapeHtml(r.phone_number)}</td>
+          <td style="font-weight: 600;">${escapeHtml(r.display_name)}</td>
+          <td><span style="font-size: 10px; color: #94a3b8; font-family: var(--font-mono);">${escapeHtml(r.role || "OPERATOR")}</span></td>
+          <td>${statusBadge}</td>
+          <td style="font-family: var(--font-mono); color: #64748b; font-size: 11px;">${escapeHtml(r.registered_at || "-")}</td>
+          <td style="text-align: right; white-space: nowrap;">
+            ${actionBtn}
+            <button class="btn-reg-action btn-del" onclick="deleteRegisteredNumber('${escapeHtml(r.phone_number)}')" title="Delete from authorized registry">🗑</button>
+          </td>
+        </tr>
+      `;
+    }
+    tblRegisteredBody.innerHTML = rows;
+  }
+
+  if (statTotalRegistered) statTotalRegistered.textContent = `Total: ${total}`;
+  if (statActiveRegistered) statActiveRegistered.textContent = `Active: ${active}`;
+  if (statBlockedRegistered) statBlockedRegistered.textContent = `Blocked: ${blocked}`;
+}
+
+async function toggleNumberStatus(phoneNumber, targetStatus) {
+  try {
+    const action = targetStatus === "BLOCKED" ? "block" : "unblock";
+    const res = await fetch(`/api/registered-numbers/${encodeURIComponent(phoneNumber)}/${action}`, {
+      method: "POST"
+    });
+    const result = await res.json();
+    if (result.success) {
+      addTranscript("system", `[ACCESS CONTROL] Number ${phoneNumber} is now ${targetStatus}.`);
+      fetchRegisteredNumbers();
+      fetchCallLogs();
+    } else {
+      alert(`Error updating number: ${result.error}`);
+    }
+  } catch (e) {
+    console.error("Status toggle error:", e);
+    alert("Network error updating number status.");
+  }
+}
+
+async function deleteRegisteredNumber(phoneNumber) {
+  if (!confirm(`Are you sure you want to remove ${phoneNumber} from the authorized caller list? They will no longer be able to call.`)) {
+    return;
+  }
+  try {
+    const res = await fetch(`/api/registered-numbers/${encodeURIComponent(phoneNumber)}`, {
+      method: "DELETE"
+    });
+    const result = await res.json();
+    if (result.success) {
+      addTranscript("system", `[ACCESS CONTROL] Number ${phoneNumber} deleted from registry.`);
+      fetchRegisteredNumbers();
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (e) {
+    console.error("Delete error:", e);
+  }
+}
+
+if (frmAddNumber) {
+  frmAddNumber.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const phone = txtRegPhone.value.trim();
+    const name = txtRegName.value.trim();
+    const role = selRegRole.value;
+
+    if (!phone || !name) return;
+
+    try {
+      const res = await fetch("/api/registered-numbers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone_number: phone, display_name: name, role: role })
+      });
+      const data = await res.json();
+      if (data.success) {
+        addTranscript("system", `[ACCESS CONTROL] Registered new authorized number: ${phone} (${name})`);
+        txtRegPhone.value = "";
+        txtRegName.value = "";
+        fetchRegisteredNumbers();
+      } else {
+        alert(data.error || "Failed to register number.");
+      }
+    } catch (err) {
+      console.error("Add number error:", err);
+      alert("Failed to submit registration request.");
+    }
+  });
+}
+
+window.toggleNumberStatus = toggleNumberStatus;
+window.deleteRegisteredNumber = deleteRegisteredNumber;
+
+// ──────────────────────────────────────────────
 // Database Call Logs Polling & Rendering
 // ──────────────────────────────────────────────
 
@@ -606,19 +867,34 @@ function renderCallLogsTable(logs) {
     const isIso = (log.tower_status === "ISOLATED");
     const channelClass = (log.call_type === "TWILIO_INBOUND") ? "twilio" : "simulator";
     const channelLabel = (log.call_type === "TWILIO_INBOUND") ? "Twilio Phone" : "Web Simulator";
-    const stateBadgeClass = isIso ? "isolated" : "active";
-    const stateBadgeText = isIso ? "ISOLATED" : "ACTIVE";
+
+    // Access Result Badge
+    let accessBadge = '<span class="badge-access authorized">✔ AUTHORIZED</span>';
+    if (log.status === "REJECTED_UNREGISTERED") {
+      accessBadge = '<span class="badge-access unregistered">⛔ UNREGISTERED</span>';
+    } else if (log.status === "REJECTED_BLOCKED") {
+      accessBadge = '<span class="badge-access blocked">🚫 BLOCKED</span>';
+    } else if (log.status && log.status.startsWith("REJECTED")) {
+      accessBadge = `<span class="badge-access blocked">⛔ ${escapeHtml(log.status)}</span>`;
+    }
+
+    const towerText = log.tower_id ? log.tower_id : "-";
     const vStr = (Number(log.voltage_v) || 0).toFixed(2);
     const maStr = (Number(log.current_ma) || 0).toFixed(1);
+
+    const callerNameTag = log.caller_name ? `<div style="font-size: 10px; color: #94a3b8;">${escapeHtml(log.caller_name)}</div>` : '';
 
     rows += `
       <tr>
         <td style="font-family: var(--font-mono); color: #94a3b8; font-size: 11px;">${log.timestamp}</td>
-        <td style="font-family: var(--font-mono); font-weight: 700; color: #facc15;">${log.caller_number}</td>
+        <td>
+          <div style="font-family: var(--font-mono); font-weight: 700; color: #facc15;">${escapeHtml(log.caller_number)}</div>
+          ${callerNameTag}
+        </td>
+        <td>${accessBadge}</td>
         <td><span class="badge-channel ${channelClass}">${channelLabel}</span></td>
         <td style="font-weight: 700; text-transform: uppercase;">${log.language || "en"}</td>
-        <td style="font-family: var(--font-mono); font-weight: 800; color: #38bdf8;">${log.tower_id || "-"}</td>
-        <td><span class="badge-state-mini ${stateBadgeClass}">${stateBadgeText}</span></td>
+        <td style="font-family: var(--font-mono); font-weight: 800; color: #38bdf8;">${towerText}</td>
         <td class="telemetry-cell">
           <span class="volt">${vStr} V</span>
           <span class="curr ${isIso ? 'isolated' : ''}">(${maStr} mA)</span>
@@ -652,8 +928,10 @@ if (btnClearDb) {
   });
 }
 
-// Initial Load and Fast 1.5s Live Sync with Digital Twin
+// Initial Load and Fast Sync Intervals
 fetchTowersStatus();
+fetchRegisteredNumbers();
 fetchCallLogs();
 setInterval(fetchTowersStatus, 1500);
+setInterval(fetchRegisteredNumbers, 4000);
 setInterval(fetchCallLogs, 3000);
