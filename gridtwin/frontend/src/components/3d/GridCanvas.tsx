@@ -258,27 +258,25 @@ export const GridCanvas: React.FC = () => {
   const mainReachT5 = mainReachT4 && !isT5Iso;
 
   // Tower Energization:
-  // - When Reverse Feed is ON: Backfeed current flows through the whole line including isolated towers!
-  // - When Reverse Feed is OFF:
-  //   - Isolated towers NEVER receive current (0 A).
-  //   - Non-isolated towers are energized if:
+  // - Isolated towers NEVER receive main power (isT*Iso is true).
+  // - Non-isolated towers are energized if:
   //     (a) Bypass is ON (isBypassClosed): alternate bypass bus feeds all healthy towers!
   //     (b) Unbroken main route reaches the tower.
-  const isTower1Energized = isReverseFeedActive || (!isT1Iso && (mainReachT1 || isBypassClosed));
-  const isTower2Energized = isReverseFeedActive || (!isT2Iso && (mainReachT2 || isBypassClosed));
-  const isTower3Energized = isReverseFeedActive || (!isT3Iso && (mainReachT3 || isBypassClosed));
-  const isTower4Energized = isReverseFeedActive || (!isT4Iso && (mainReachT4 || isBypassClosed));
-  const isTower5Energized = isReverseFeedActive || (!isT5Iso && (mainReachT5 || isBypassClosed));
+  const isTower1Energized = !isT1Iso && (mainReachT1 || isBypassClosed);
+  const isTower2Energized = !isT2Iso && (mainReachT2 || isBypassClosed);
+  const isTower3Energized = !isT3Iso && (mainReachT3 || isBypassClosed);
+  const isTower4Energized = !isT4Iso && (mainReachT4 || isBypassClosed);
+  const isTower5Energized = !isT5Iso && (mainReachT5 || isBypassClosed);
 
   const towerEnergizedMap = [isTower1Energized, isTower2Energized, isTower3Energized, isTower4Energized, isTower5Energized];
 
   // Main transmission route interlink conductors between towers along Z = 0
-  // When Reverse Feed is active, current flows straight through the corridor!
-  const isSpanSubToT1Live = isReverseFeedActive || !isT1Iso;
-  const isSpanT1ToT2Live = isReverseFeedActive || (!isT1Iso && !isT2Iso && isTower1Energized);
-  const isSpanT2ToT3Live = isReverseFeedActive || (!isT2Iso && !isT3Iso && isTower2Energized);
-  const isSpanT3ToT4Live = isReverseFeedActive || (!isT3Iso && !isT4Iso && isTower3Energized);
-  const isSpanT4ToT5Live = isReverseFeedActive || (!isT4Iso && !isT5Iso && isTower4Energized);
+  // Current between an isolated tower and another tower is strictly BLOCKED
+  const isSpanSubToT1Live = !isT1Iso;
+  const isSpanT1ToT2Live = !isT1Iso && !isT2Iso && isTower1Energized;
+  const isSpanT2ToT3Live = !isT2Iso && !isT3Iso && isTower2Energized;
+  const isSpanT3ToT4Live = !isT3Iso && !isT4Iso && isTower3Energized;
+  const isSpanT4ToT5Live = !isT4Iso && !isT5Iso && isTower4Energized;
 
   // Perfectly aligned Transmission Corridor along Z = 0
   const sections = [
