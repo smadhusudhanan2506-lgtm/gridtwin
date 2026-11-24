@@ -9,14 +9,12 @@ import {
   VolumeX,
   Plus,
   Trash2,
-  RefreshCw,
   Zap,
   Activity,
-  AlertTriangle,
   ExternalLink,
-  CheckCircle2,
-  XCircle,
-  Radio
+  Radio,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 
 interface RegisteredCaller {
@@ -81,105 +79,82 @@ const DTMF_FREQS: Record<string, [number, number]> = {
 
 // ──────────────────────────────────────────────
 // SVG Transmission Tower Graphic (Lattice Pylon)
-// Turns GREEN when Active and RED when Isolated
+// Exact match to reference design:
+// Glowing Cyan/Green when Active, Glowing Red when Isolated
 // ──────────────────────────────────────────────
 const TowerGraphicSvg: React.FC<{ isIsolated: boolean }> = ({ isIsolated }) => {
-  if (isIsolated) {
-    return (
-      <svg className="w-full h-24 my-1 select-none drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="g-mound-iso" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#7f1d1d" />
-            <stop offset="100%" stopColor="#450a0a" />
-          </linearGradient>
-          <filter id="glow-iso" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="2.5" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        </defs>
-        {/* Ground Base Mound (Red Alert) */}
-        <ellipse cx="80" cy="112" rx="68" ry="7" fill="url(#g-mound-iso)" opacity="0.95" />
-        <path d="M15 112 Q80 108 145 112" stroke="#ef4444" strokeWidth="2.2" fill="none" opacity="0.85" />
+  const strokeColor = isIsolated ? '#ef4444' : '#00f0ff';
+  const wireColor = isIsolated ? '#f87171' : '#06b6d4';
+  const centerFill = isIsolated ? '#ef4444' : '#00f0ff';
+
+  return (
+    <svg className="w-full h-24 my-1 select-none" viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id={isIsolated ? "glow-iso" : "glow-act"} x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="2.2" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+      </defs>
+
+      {/* Horizontal Power Lines passing through crossarms */}
+      {isIsolated ? (
+        <>
+          <path d="M0 38 L55 38" stroke={wireColor} strokeWidth="1.8" strokeDasharray="4,4" opacity="0.85" />
+          <path d="M105 38 L160 38" stroke={wireColor} strokeWidth="1.8" strokeDasharray="4,4" opacity="0.85" />
+          <path d="M0 55 L45 55" stroke={wireColor} strokeWidth="1.8" strokeDasharray="4,4" opacity="0.85" />
+          <path d="M115 55 L160 55" stroke={wireColor} strokeWidth="1.8" strokeDasharray="4,4" opacity="0.85" />
+          <path d="M0 72 L38 72" stroke={wireColor} strokeWidth="1.8" strokeDasharray="4,4" opacity="0.85" />
+          <path d="M122 72 L160 72" stroke={wireColor} strokeWidth="1.8" strokeDasharray="4,4" opacity="0.85" />
+        </>
+      ) : (
+        <>
+          <line x1="0" y1="38" x2="160" y2="38" stroke={wireColor} strokeWidth="1.8" opacity="0.9" />
+          <line x1="0" y1="55" x2="160" y2="55" stroke={wireColor} strokeWidth="1.8" opacity="0.9" />
+          <line x1="0" y1="72" x2="160" y2="72" stroke={wireColor} strokeWidth="1.8" opacity="0.9" />
+        </>
+      )}
+
+      {/* Main Lattice Tower Structure */}
+      <g stroke={strokeColor} strokeWidth="2.0" strokeLinecap="round" strokeLinejoin="round" filter={`url(#${isIsolated ? "glow-iso" : "glow-act"})`}>
+        {/* Legs */}
+        <line x1="58" y1="112" x2="74" y2="18" />
+        <line x1="102" y1="112" x2="86" y2="18" />
+        {/* Peak apex */}
+        <line x1="74" y1="18" x2="80" y2="8" />
+        <line x1="86" y1="18" x2="80" y2="8" />
         
-        {/* Disconnected Dashed Power Lines (Red) */}
-        <path d="M0 45 L48 49" stroke="#ef4444" strokeWidth="2" strokeDasharray="4,4" fill="none" opacity="0.9" />
-        <path d="M112 49 L160 45" stroke="#ef4444" strokeWidth="2" strokeDasharray="4,4" fill="none" opacity="0.9" />
-        <path d="M0 65 L40 68" stroke="#ef4444" strokeWidth="2" strokeDasharray="4,4" fill="none" opacity="0.9" />
-        <path d="M120 68 L160 65" stroke="#ef4444" strokeWidth="2" strokeDasharray="4,4" fill="none" opacity="0.9" />
+        {/* 3 Crossarms */}
+        <line x1="55" y1="38" x2="105" y2="38" />
+        <line x1="45" y1="55" x2="115" y2="55" />
+        <line x1="38" y1="72" x2="122" y2="72" />
 
-        {/* Tower Lattice Structure (Glowing Intense Red Pylon When Isolated) */}
-        <g stroke="#ef4444" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow-iso)">
-          {/* Main Legs */}
-          <line x1="56" y1="112" x2="74" y2="24" />
-          <line x1="104" y1="112" x2="86" y2="24" />
-          {/* Peak */}
-          <line x1="74" y1="24" x2="80" y2="8" />
-          <line x1="86" y1="24" x2="80" y2="8" />
-          {/* Crossarms */}
-          <line x1="48" y1="45" x2="112" y2="45" />
-          <line x1="38" y1="65" x2="122" y2="65" />
-          {/* Cross Bracing */}
-          <line x1="60" y1="96" x2="100" y2="96" />
-          <line x1="60" y1="96" x2="96" y2="80" />
-          <line x1="100" y1="96" x2="64" y2="80" />
-          <line x1="64" y1="80" x2="96" y2="80" />
-          <line x1="67" y1="65" x2="93" y2="65" />
-          <line x1="70" y1="45" x2="90" y2="45" />
-          <line x1="80" y1="8" x2="80" y2="45" strokeWidth="1.6" opacity="0.8" />
+        {/* Triangular Lattice Bracing */}
+        <line x1="62" y1="100" x2="98" y2="100" />
+        <line x1="62" y1="100" x2="95" y2="84" />
+        <line x1="98" y1="100" x2="65" y2="84" />
+        <line x1="65" y1="84" x2="95" y2="84" />
+        <line x1="68" y1="72" x2="92" y2="72" />
+        <line x1="68" y1="72" x2="89" y2="55" />
+        <line x1="92" y1="72" x2="71" y2="55" />
+        <line x1="71" y1="55" x2="89" y2="55" />
+        <line x1="73" y1="38" x2="87" y2="38" />
+        <line x1="80" y1="8" x2="80" y2="38" strokeWidth="1.4" opacity="0.7" />
+      </g>
+
+      {/* Center Beacon / Isolation Badge */}
+      {isIsolated ? (
+        <g>
+          <circle cx="80" cy="55" r="9" fill="#991b1b" stroke="#f87171" strokeWidth="1.8" />
+          <text x="80" y="58.5" textAnchor="middle" fill="#fee2e2" fontSize="9" fontWeight="900" fontFamily="sans-serif">✕</text>
         </g>
-
-        {/* Isolation Cut-Off Warning Badge */}
-        <circle cx="80" cy="55" r="14" fill="#991b1b" stroke="#f87171" strokeWidth="2" />
-        <text x="80" y="60.5" textAnchor="middle" fill="#fee2e2" fontSize="13" fontWeight="900" fontFamily="sans-serif">✕</text>
-      </svg>
-    );
-  } else {
-    return (
-      <svg className="w-full h-24 my-1 select-none drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]" viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="g-mound-act" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#059669" />
-            <stop offset="100%" stopColor="#022c22" />
-          </linearGradient>
-          <filter id="glow-green" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="2.2" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        </defs>
-        {/* Ground Base Mound (Green Terrain) */}
-        <ellipse cx="80" cy="112" rx="68" ry="7" fill="url(#g-mound-act)" opacity="0.9" />
-        <path d="M15 112 Q80 108 145 112" stroke="#10b981" strokeWidth="2.2" fill="none" opacity="0.85" />
-        
-        {/* Continuous High-Voltage Power Lines (Green) */}
-        <path d="M0 45 Q80 50 160 45" stroke="#34d399" strokeWidth="2" fill="none" opacity="0.9" />
-        <path d="M0 65 Q80 70 160 65" stroke="#34d399" strokeWidth="2" fill="none" opacity="0.9" />
-
-        {/* Tower Lattice Structure (Glowing Intense Emerald Green Pylon When Active) */}
-        <g stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow-green)">
-          {/* Main Legs */}
-          <line x1="56" y1="112" x2="74" y2="24" />
-          <line x1="104" y1="112" x2="86" y2="24" />
-          {/* Peak */}
-          <line x1="74" y1="24" x2="80" y2="8" />
-          <line x1="86" y1="24" x2="80" y2="8" />
-          {/* Crossarms */}
-          <line x1="48" y1="45" x2="112" y2="45" />
-          <line x1="38" y1="65" x2="122" y2="65" />
-          {/* Cross Bracing */}
-          <line x1="60" y1="96" x2="100" y2="96" />
-          <line x1="60" y1="96" x2="96" y2="80" />
-          <line x1="100" y1="96" x2="64" y2="80" />
-          <line x1="64" y1="80" x2="96" y2="80" />
-          <line x1="67" y1="65" x2="93" y2="65" />
-          <line x1="70" y1="45" x2="90" y2="45" />
-          <line x1="80" y1="8" x2="80" y2="45" strokeWidth="1.6" opacity="0.8" />
+      ) : (
+        <g>
+          <circle cx="80" cy="55" r="6" fill={centerFill} stroke="#ffffff" strokeWidth="1.5" />
+          <circle cx="80" cy="55" r="11" fill="none" stroke={centerFill} strokeWidth="1" strokeDasharray="3,3" opacity="0.8" />
         </g>
-
-        {/* Active Power Transmission Dot */}
-        <circle cx="80" cy="55" r="5" fill="#34d399" stroke="#ecfdf5" strokeWidth="1.5" />
-      </svg>
-    );
-  }
+      )}
+    </svg>
+  );
 };
 
 export const TollFreePanel: React.FC = () => {
@@ -231,7 +206,9 @@ export const TollFreePanel: React.FC = () => {
   });
 
   const audioContextRef = useRef<AudioContext | null>(null);
-  const transcriptBottomRef = useRef<HTMLDivElement | null>(null);
+  const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
+  const callersTableContainerRef = useRef<HTMLDivElement | null>(null);
+  const auditTableContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Save registered callers to localStorage
   useEffect(() => {
@@ -247,11 +224,6 @@ export const TollFreePanel: React.FC = () => {
     } catch {}
   }, [callLogs]);
 
-  // Auto scroll transcript
-  useEffect(() => {
-    transcriptBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [transcript]);
-
   // Call timer interval
   useEffect(() => {
     let interval: any = null;
@@ -266,11 +238,39 @@ export const TollFreePanel: React.FC = () => {
   }, [callActive]);
 
   const addTranscript = (type: 'system' | 'caller' | 'ivr' | 'alert', text: string) => {
-    setTranscript(prev => [...prev.slice(-35), {
-      type,
-      time: new Date().toLocaleTimeString(),
-      text
-    }]);
+    setTranscript(prev => {
+      const next = [...prev.slice(-50), {
+        type,
+        time: new Date().toLocaleTimeString(),
+        text
+      }];
+      return next;
+    });
+    // Auto-scroll to bottom on new message
+    setTimeout(() => {
+      if (transcriptContainerRef.current) {
+        transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+      }
+    }, 50);
+  };
+
+  // Scroll helpers
+  const scrollTranscript = (direction: 'up' | 'down') => {
+    if (!transcriptContainerRef.current) return;
+    const delta = direction === 'up' ? -120 : 120;
+    transcriptContainerRef.current.scrollBy({ top: delta, behavior: 'smooth' });
+  };
+
+  const scrollAuditLog = (direction: 'up' | 'down') => {
+    if (!auditTableContainerRef.current) return;
+    const delta = direction === 'up' ? -150 : 150;
+    auditTableContainerRef.current.scrollBy({ top: delta, behavior: 'smooth' });
+  };
+
+  const scrollCallersTable = (direction: 'up' | 'down') => {
+    if (!callersTableContainerRef.current) return;
+    const delta = direction === 'up' ? -120 : 120;
+    callersTableContainerRef.current.scrollBy({ top: delta, behavior: 'smooth' });
   };
 
   // DTMF Tone generator
@@ -550,7 +550,7 @@ export const TollFreePanel: React.FC = () => {
   ) => {
     const entry: CallLogEntry = {
       id: `log_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      timestamp: new Date().toLocaleString(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       callerNumber: phone,
       callerName: name,
       accessResult: access,
@@ -639,36 +639,56 @@ export const TollFreePanel: React.FC = () => {
   return (
     <div className="w-full flex flex-col gap-6 text-slate-100 max-w-7xl mx-auto pb-8">
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* TOP HEADER: BRAND BANNER & FAST NAVIGATION                  */}
+      {/* TOP HEADER: EXACT MATCH TO MOCKUP WITH SUNSET TOWER SILHOUETTES */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-[#09152e] via-[#0d1f42] to-[#071329] border border-cyan-500/30 rounded-3xl p-5 sm:p-6 shadow-2xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#180e05]/95 via-[#071329]/95 to-[#061126] border border-cyan-500/40 rounded-3xl p-5 sm:p-6 shadow-[0_0_24px_rgba(6,182,212,0.18)]">
+        {/* Sunset Silhouette Art */}
+        <div className="absolute left-0 top-0 bottom-0 w-64 bg-gradient-to-r from-amber-600/20 via-orange-500/10 to-transparent pointer-events-none" />
+        <div className="absolute right-0 top-0 bottom-0 w-64 bg-gradient-to-l from-blue-600/20 via-cyan-500/10 to-transparent pointer-events-none" />
+
+        {/* Transmission Tower Silhouettes Left & Right */}
+        <svg className="absolute left-3 bottom-0 h-full w-28 opacity-30 pointer-events-none" viewBox="0 0 100 120">
+          <line x1="35" y1="120" x2="48" y2="20" stroke="#f59e0b" strokeWidth="2.5" />
+          <line x1="65" y1="120" x2="52" y2="20" stroke="#f59e0b" strokeWidth="2.5" />
+          <line x1="20" y1="40" x2="80" y2="40" stroke="#f59e0b" strokeWidth="2.5" />
+          <line x1="15" y1="60" x2="85" y2="60" stroke="#f59e0b" strokeWidth="2.5" />
+          <line x1="10" y1="80" x2="90" y2="80" stroke="#f59e0b" strokeWidth="2.5" />
+          <line x1="38" y1="100" x2="62" y2="100" stroke="#f59e0b" strokeWidth="2" />
+          <line x1="48" y1="20" x2="50" y2="10" stroke="#f59e0b" strokeWidth="2" />
+          <line x1="52" y1="20" x2="50" y2="10" stroke="#f59e0b" strokeWidth="2" />
+        </svg>
+
+        <svg className="absolute right-3 bottom-0 h-full w-28 opacity-30 pointer-events-none" viewBox="0 0 100 120">
+          <line x1="35" y1="120" x2="48" y2="20" stroke="#38bdf8" strokeWidth="2.5" />
+          <line x1="65" y1="120" x2="52" y2="20" stroke="#38bdf8" strokeWidth="2.5" />
+          <line x1="20" y1="40" x2="80" y2="40" stroke="#38bdf8" strokeWidth="2.5" />
+          <line x1="15" y1="60" x2="85" y2="60" stroke="#38bdf8" strokeWidth="2.5" />
+          <line x1="10" y1="80" x2="90" y2="80" stroke="#38bdf8" strokeWidth="2.5" />
+          <line x1="38" y1="100" x2="62" y2="100" stroke="#38bdf8" strokeWidth="2" />
+          <line x1="48" y1="20" x2="50" y2="10" stroke="#38bdf8" strokeWidth="2" />
+          <line x1="52" y1="20" x2="50" y2="10" stroke="#38bdf8" strokeWidth="2" />
+        </svg>
+
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 p-0.5 shadow-lg shadow-cyan-500/30 shrink-0">
-              <div className="w-full h-full bg-[#061024] rounded-[14px] flex items-center justify-center text-cyan-300">
-                <PhoneCall className="w-6 h-6 animate-pulse" />
-              </div>
+          <div className="flex flex-col gap-1 pl-4 sm:pl-16">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-wide drop-shadow-md">
+                GRIDTWIN 24/7 Toll-Free Voice Hotline
+              </h1>
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/60 text-emerald-300 text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>ZERO CLOUD LIMITS</span>
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-xl sm:text-2xl font-black text-white tracking-wide">
-                  GRIDTWIN 24/7 Toll-Free Voice Hotline
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-[11px] font-extrabold uppercase tracking-wider">
-                  Zero Cloud Limits
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-300 font-medium mt-0.5">
-                Multi-Lingual SCADA IVR Telemetry &amp; Authorized Caller Access Control (Whitelist &amp; Blocklist)
-              </p>
-            </div>
+            <p className="text-xs sm:text-sm text-slate-300 font-medium">
+              Multi-Lingual SCADA IVR Telemetry &amp; Authorized Caller Access Control (Whitelist &amp; Blocklist)
+            </p>
           </div>
 
-          <div className="flex items-center gap-3 font-mono text-xs">
+          <div className="flex items-center gap-3 font-mono text-xs pr-2 sm:pr-8">
             <button
               onClick={() => setActiveTab('3d-twin')}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/30 hover:bg-blue-600/60 border border-blue-400/40 text-cyan-200 font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/60 border border-cyan-400/50 text-cyan-200 font-extrabold transition-all shadow-md active:scale-95 cursor-pointer"
             >
               <span>🌐 Open 3D Lab</span>
               <ExternalLink className="w-4 h-4 text-cyan-300" />
@@ -683,81 +703,69 @@ export const TollFreePanel: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN (4 Cols): Virtual Phone Device & Dialpad */}
         <div className="lg:col-span-4 flex flex-col gap-4">
-          <div className="bg-gradient-to-b from-[#0e1b36] via-[#0a1429] to-[#070e1c] border border-cyan-500/30 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-2xl">
+          <div className="bg-gradient-to-b from-[#091326] via-[#070e1c] to-[#040812] border border-cyan-500/35 rounded-3xl p-5 sm:p-6 flex flex-col gap-4 shadow-[0_0_24px_rgba(6,182,212,0.12)]">
             {/* Phone Top Header */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-sm">
-                  <Zap className="w-4 h-4" />
+                <div className="w-9 h-9 rounded-full bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 shadow-md">
+                  <PhoneCall className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-sm tracking-wide text-white">GRIDTWIN PHONE</h3>
+                  <h3 className="font-black text-sm tracking-wide text-white">GRIDTWIN PHONE</h3>
                   <p className="text-[10px] text-slate-400 font-mono font-medium">SCADA-IVR TELEMETRY</p>
                 </div>
               </div>
-              <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-slate-800/90 border border-slate-700 text-slate-300 font-bold">
+              <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-slate-900 border border-emerald-500/50 text-emerald-400 font-black flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 v2.4 Online
               </span>
             </div>
 
             {/* Hotline Calling Gateway Display */}
-            <div className="bg-gradient-to-r from-[#071329] to-[#0a1b38] border border-cyan-500/40 rounded-2xl p-4 flex items-center gap-3.5 shadow-inner">
-              <div className="w-11 h-11 rounded-full bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 shrink-0 shadow-md">
-                <PhoneCall className="w-5 h-5" />
+            <div className="bg-[#050b18] border border-slate-800 rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-1 shadow-inner">
+              <div className="text-xl font-black text-white font-mono tracking-wider">
+                +1 573 859 5176
               </div>
-              <div className="min-w-0">
-                <div className="text-base font-black text-white font-mono tracking-wider truncate">
-                  +1 573 859 5176
-                </div>
-                <div className="flex items-center gap-2 text-xs font-semibold mt-0.5">
-                  <span className={`w-2.5 h-2.5 rounded-full ${callActive ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
-                  <span className={callActive ? 'text-emerald-400 font-extrabold' : 'text-slate-400 font-medium'}>
-                    {callActive ? 'Call Connected' : 'Ready (On-Hook)'}
+              <div className="flex items-center gap-2 text-xs font-semibold">
+                <span className={`w-2.5 h-2.5 rounded-full ${callActive ? 'bg-emerald-400 animate-ping' : 'bg-emerald-400'}`} />
+                <span className={callActive ? 'text-emerald-400 font-extrabold' : 'text-slate-300 font-semibold'}>
+                  {callActive ? 'Call Connected' : 'Ready (On-Hook)'}
+                </span>
+                {callActive && (
+                  <span className="font-mono text-cyan-300 font-black bg-slate-900 px-2 py-0.5 rounded-md border border-slate-700 text-xs">
+                    {timerMin}:{timerSec}
                   </span>
-                  {callActive && (
-                    <span className="font-mono text-cyan-300 font-extrabold bg-slate-900/80 px-2 py-0.5 rounded-md border border-slate-700 text-[11px]">
-                      {timerMin}:{timerSec}
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
             </div>
 
             {/* OLED Virtual Phone Screen */}
-            <div className="relative bg-[#030712] border border-cyan-500/40 rounded-2xl p-4 min-h-[125px] flex flex-col justify-between shadow-inner overflow-hidden">
-              <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-60">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[9px] font-mono text-emerald-400 uppercase tracking-widest">OLED</span>
-              </div>
-              <div className="text-xs font-mono font-medium text-emerald-300 leading-relaxed whitespace-pre-line select-text pr-8">
+            <div className="relative bg-[#02050e] border border-emerald-500/30 rounded-2xl p-4 min-h-[110px] flex flex-col justify-between shadow-inner">
+              <div className="text-xs font-mono font-bold text-emerald-400 leading-relaxed whitespace-pre-line select-text">
+                <span className="text-emerald-500 font-black mr-2">&gt;</span>
                 {displayText}
               </div>
               {isSpeaking && (
-                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-800 text-[11px] text-cyan-300 font-bold">
+                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-800 text-xs text-cyan-300 font-bold">
                   <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" />
                   <span>Speaking ({selectedLanguage.toUpperCase()})...</span>
-                  <div className="flex items-center gap-1 ml-auto">
-                    <span className="w-1 h-3 bg-cyan-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                    <span className="w-1 h-4 bg-cyan-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                    <span className="w-1 h-2 bg-cyan-400 rounded-full animate-bounce" />
-                  </div>
                 </div>
               )}
             </div>
 
             {/* Caller Identity Selector (Access Control Gateway) */}
-            <div className="bg-[#060e20] border border-slate-800/90 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-sm">
+            <div className="flex flex-col gap-2 pt-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-extrabold text-slate-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                <span className="font-extrabold text-slate-300 text-xs uppercase tracking-wider flex items-center gap-1.5">
                   <Radio className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Calling From (Caller ID):</span>
+                  <span>CALLING FROM (CALLER ID):</span>
                 </span>
-                <span className={`text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full ${
+                <span className={`text-[11px] font-mono font-black px-2.5 py-0.5 rounded-full ${
                   currentAuth.status === 'ACTIVE'
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                     : currentAuth.status === 'BLOCKED'
-                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm'
-                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                 }`}>
                   {currentAuth.status === 'ACTIVE' ? '✔ Authorized' : currentAuth.status === 'BLOCKED' ? '🚫 Blocked' : '⛔ Unregistered'}
                 </span>
@@ -766,11 +774,11 @@ export const TollFreePanel: React.FC = () => {
               <select
                 value={selectedCallerNumber}
                 onChange={(e) => setSelectedCallerNumber(e.target.value)}
-                className="w-full bg-[#030814] border border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-white outline-none focus:border-cyan-400 transition-colors cursor-pointer"
+                className="w-full bg-[#050c1c] border border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-white outline-none focus:border-cyan-400 transition-colors cursor-pointer"
               >
                 {registeredCallers.map((c) => (
                   <option key={c.phoneNumber} value={c.phoneNumber}>
-                    {c.status === 'BLOCKED' ? '🚫 ' : '📱 '}{c.phoneNumber} ({c.displayName}) [{c.status}]
+                    {c.phoneNumber.startsWith('+1') ? '🇺🇸 ' : '🇮🇳 '}{c.phoneNumber} ({c.displayName}) [{c.status}]
                   </option>
                 ))}
                 <option value="+919999900000">⛔ +91 99999 00000 (Unregistered Stranger - Test Rejection)</option>
@@ -781,10 +789,10 @@ export const TollFreePanel: React.FC = () => {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Or test custom phone number..."
+                  placeholder="Or test custom phone number ..."
                   value={customCallerInput}
                   onChange={(e) => setCustomCallerInput(e.target.value)}
-                  className="flex-1 bg-[#030814] border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-white outline-none focus:border-cyan-400"
+                  className="flex-1 bg-[#050c1c] border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-white outline-none focus:border-cyan-400"
                 />
                 <button
                   type="button"
@@ -794,7 +802,7 @@ export const TollFreePanel: React.FC = () => {
                       setCustomCallerInput('');
                     }
                   }}
-                  className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-extrabold rounded-xl transition-all cursor-pointer shadow-md"
                 >
                   Set
                 </button>
@@ -802,22 +810,22 @@ export const TollFreePanel: React.FC = () => {
             </div>
 
             {/* Dialpad 3x4 Grid */}
-            <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className="grid grid-cols-3 gap-2.5 pt-1">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((key) => {
                 const subLabels: Record<string, string> = {
                   '1': 'TAMIL', '2': 'ENG', '3': 'HINDI',
                   '4': 'GHI', '5': 'JKL', '6': 'MNO',
                   '7': 'PQRS', '8': 'TUV', '9': 'WXYZ',
-                  '*': 'RESET', '0': '+', '#': 'MENU'
+                  '*': 'RESET', '0': '', '#': 'MENU'
                 };
                 return (
                   <button
                     key={key}
                     type="button"
                     onClick={() => handleKeyPress(key)}
-                    className="flex flex-col items-center justify-center p-3 rounded-2xl bg-gradient-to-b from-[#111c38] to-[#0a1226] hover:from-[#17264a] hover:to-[#0f1b38] active:scale-95 border border-slate-700/60 hover:border-cyan-500/50 transition-all shadow-md group cursor-pointer"
+                    className="flex flex-col items-center justify-center p-3 rounded-2xl bg-gradient-to-b from-[#0f1b36] to-[#071124] hover:from-[#172b54] hover:to-[#0d1e3d] active:scale-95 border border-slate-700/60 hover:border-cyan-400/60 transition-all shadow-md group cursor-pointer"
                   >
-                    <span className="text-lg font-black text-white group-hover:text-cyan-300 leading-none">{key}</span>
+                    <span className="text-xl font-black text-white group-hover:text-cyan-300 leading-none">{key}</span>
                     <span className="text-[9px] font-bold text-slate-400 tracking-wider mt-1">{subLabels[key]}</span>
                   </button>
                 );
@@ -830,25 +838,25 @@ export const TollFreePanel: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleStartCall}
-                  className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm shadow-xl shadow-emerald-600/30 transition-all active:scale-[0.98] cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm shadow-[0_0_20px_rgba(16,185,129,0.35)] transition-all active:scale-[0.98] cursor-pointer"
                 >
-                  <PhoneCall className="w-5 h-5 animate-bounce" />
+                  <PhoneCall className="w-4 h-4 animate-bounce" />
                   <span>Call Toll-Free (+1 573 859 5176)</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={handleHangup}
-                  className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-sm shadow-xl shadow-rose-600/30 transition-all active:scale-[0.98] cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-full bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-500 hover:to-red-400 text-white font-black text-sm shadow-[0_0_20px_rgba(239,68,68,0.35)] transition-all active:scale-[0.98] cursor-pointer"
                 >
-                  <PhoneOff className="w-5 h-5" />
+                  <PhoneOff className="w-4 h-4" />
                   <span>End Call</span>
                 </button>
               )}
             </div>
 
             {/* Audio Voice Speech Toggle */}
-            <div className="flex items-center justify-between text-xs text-slate-400 px-1 pt-1">
+            <div className="flex items-center justify-between text-xs text-slate-400 px-1 pt-0.5">
               <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-white transition-colors">
                 <input
                   type="checkbox"
@@ -868,10 +876,10 @@ export const TollFreePanel: React.FC = () => {
           {/* ─────────────────────────────────────────────────────────── */}
           {/* 1. LIVE TRANSMISSION TOWERS TELEMETRY & ISOLATION STATUS    */}
           {/* ─────────────────────────────────────────────────────────── */}
-          <div className="bg-[#0b132b]/95 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4">
+          <div className="bg-[#091326] border border-cyan-500/35 rounded-3xl p-5 sm:p-6 shadow-[0_0_24px_rgba(6,182,212,0.12)] flex flex-col gap-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-md">
                   <Zap className="w-5 h-5" />
                 </div>
                 <div>
@@ -879,14 +887,14 @@ export const TollFreePanel: React.FC = () => {
                   <p className="text-xs text-slate-300 font-medium">Direct 2-Way Real-Time Synchronization with 3D Digital Twin</p>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold flex items-center gap-2">
+              <span className="px-3.5 py-1 rounded-full bg-cyan-950 border border-cyan-400/50 text-cyan-300 font-mono text-xs font-black flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
                 Live 3D Twin Store
               </span>
             </div>
 
-            {/* Dynamic Grid Summary Alert Banner */}
-            <div className={`p-3.5 rounded-2xl flex items-center gap-3 border text-xs font-bold transition-all ${
+            {/* Dynamic Grid Summary Alert Banner matching reference mockup */}
+            <div className={`p-3 rounded-2xl flex items-center gap-3 border text-xs font-bold transition-all ${
               isolatedCount > 0
                 ? 'bg-rose-950/40 border-rose-500/60 text-rose-200'
                 : 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200'
@@ -899,8 +907,8 @@ export const TollFreePanel: React.FC = () => {
               </span>
             </div>
 
-            {/* 5 Towers Grid with Picture of Tower Turning GREEN (Active) and RED (Isolated) */}
-            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3.5">
+            {/* 5 Towers Grid with Full Picture of Tower Turning GREEN (Active) and RED (Isolated) */}
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
               {(['T1', 'T2', 'T3', 'T4', 'T5'] as const).map((towerId, idx) => {
                 const towerNum = String(idx + 1);
                 const isIso = isolatedTowers.includes(towerId);
@@ -910,15 +918,15 @@ export const TollFreePanel: React.FC = () => {
                 return (
                   <div
                     key={towerId}
-                    className={`rounded-2xl p-3.5 flex flex-col justify-between border transition-all ${
+                    className={`rounded-2xl p-3 flex flex-col justify-between border transition-all ${
                       isIso
-                        ? 'bg-gradient-to-b from-[#220a0e] to-[#110406] border-rose-500/80 shadow-lg shadow-rose-950/60 ring-1 ring-rose-500/40'
-                        : 'bg-gradient-to-b from-[#061814] to-[#07131e] border-emerald-500/40 shadow-lg shadow-emerald-950/30 hover:border-emerald-400'
+                        ? 'bg-gradient-to-b from-[#220a0e] to-[#110406] border-rose-500/80 shadow-[0_0_16px_rgba(239,68,68,0.3)] ring-1 ring-rose-500/40'
+                        : 'bg-gradient-to-b from-[#061814] to-[#07131e] border-emerald-500/40 shadow-[0_0_16px_rgba(16,185,129,0.2)] hover:border-emerald-400'
                     }`}
                   >
                     <div>
                       {/* Card Top: Tower Title & Live Badge */}
-                      <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center justify-between mb-1">
                         <span className="font-mono font-black text-xs text-white">Tower {towerNum} ({towerId})</span>
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
                           isIso
@@ -931,34 +939,34 @@ export const TollFreePanel: React.FC = () => {
                       </div>
 
                       {/* PICTURE OF TOWER TURNING RED (ISOLATED) OR GREEN (ACTIVE) */}
-                      <div className="p-1 rounded-xl bg-[#040813]/60 border border-slate-800/80 my-1.5 flex items-center justify-center">
+                      <div className="p-1 rounded-xl bg-[#030712]/70 border border-slate-800/80 my-1 flex items-center justify-center">
                         <TowerGraphicSvg isIsolated={isIso} />
                       </div>
 
                       {/* Telemetry Metrics */}
                       <div className="flex flex-col gap-1 text-[11px] font-mono py-1">
                         <div className="flex justify-between items-center text-slate-400">
-                          <span className="text-[10px] uppercase">Line Current:</span>
-                          <span className={`font-bold ${isIso ? 'text-rose-400' : 'text-emerald-400'}`}>{curVal}</span>
+                          <span className="text-[10px] uppercase font-bold">LINE CURRENT :</span>
+                          <span className={`font-black ${isIso ? 'text-rose-400' : 'text-emerald-400'}`}>{curVal}</span>
                         </div>
                         <div className="flex justify-between items-center text-slate-400">
-                          <span className="text-[10px] uppercase">Bus Voltage:</span>
-                          <span className="text-white font-bold">{voltVal}</span>
+                          <span className="text-[10px] uppercase font-bold">BUS VOLTAGE :</span>
+                          <span className="text-white font-black">{voltVal}</span>
                         </div>
-                        <div className={`text-[10px] font-bold mt-1 text-center py-0.5 rounded ${
-                          isIso ? 'text-rose-400 bg-rose-950/50' : 'text-emerald-300 bg-emerald-950/50'
+                        <div className={`text-[10px] font-black mt-1 text-center py-0.5 rounded ${
+                          isIso ? 'text-rose-400 bg-rose-950/60' : 'text-emerald-300 bg-emerald-950/60'
                         }`}>
                           {isIso ? '✖ Power Cut Off' : '✔ Live Transmission'}
                         </div>
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex flex-col gap-1.5 mt-3 pt-2.5 border-t border-slate-800/80">
+                    {/* Action Buttons: Dial & Isolate/Restore */}
+                    <div className="flex flex-col gap-1.5 mt-2.5 pt-2 border-t border-slate-800/80">
                       <button
                         type="button"
                         onClick={() => handleQuickDial(towerNum)}
-                        className="w-full py-1.5 rounded-xl bg-blue-600/30 hover:bg-blue-600/60 text-cyan-200 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all border border-blue-500/30 active:scale-95 cursor-pointer"
+                        className="w-full py-1.5 rounded-full bg-blue-600/30 hover:bg-blue-600/60 text-cyan-200 font-black text-xs flex items-center justify-center gap-1.5 transition-all border border-cyan-500/40 active:scale-95 cursor-pointer shadow-sm"
                         title={`Dial Tower ${towerNum} on Hotline`}
                       >
                         <PhoneCall className="w-3.5 h-3.5" />
@@ -967,10 +975,10 @@ export const TollFreePanel: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleTowerToggle(towerId)}
-                        className={`w-full py-1.5 rounded-xl font-extrabold text-xs transition-all active:scale-95 cursor-pointer ${
+                        className={`w-full py-1.5 rounded-full font-black text-xs transition-all active:scale-95 cursor-pointer shadow-sm ${
                           isIso
-                            ? 'bg-emerald-600/40 hover:bg-emerald-600 text-emerald-200 border border-emerald-500/50 shadow-md shadow-emerald-900/30'
-                            : 'bg-rose-600/40 hover:bg-rose-600 text-rose-200 border border-rose-500/50 shadow-md shadow-rose-900/30'
+                            ? 'bg-emerald-600/40 hover:bg-emerald-600 text-emerald-200 border border-emerald-500/50 shadow-emerald-900/30'
+                            : 'bg-rose-600/40 hover:bg-rose-600 text-rose-200 border border-rose-500/50 shadow-rose-900/30'
                         }`}
                         title={isIso ? 'Restore power transmission' : 'Isolate tower from grid'}
                       >
@@ -984,26 +992,53 @@ export const TollFreePanel: React.FC = () => {
           </div>
 
           {/* ─────────────────────────────────────────────────────────── */}
-          {/* 2. REAL-TIME CALL TRANSCRIPT & DTMF LOG                     */}
+          {/* 2. REAL-TIME CALL TRANSCRIPT WITH SCROLL UP/DOWN CONTROLS   */}
           {/* ─────────────────────────────────────────────────────────── */}
-          <div className="bg-[#0b132b]/95 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-3.5">
-            <div className="flex items-center justify-between">
+          <div className="bg-[#091326] border border-cyan-500/35 rounded-3xl p-5 sm:p-6 shadow-[0_0_24px_rgba(6,182,212,0.12)] flex flex-col gap-3.5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
                 <Activity className="w-5 h-5 text-cyan-400" />
                 <h3 className="text-base font-black text-white tracking-wide">Real-Time Call Transcript &amp; DTMF Log</h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setTranscript([{ type: 'system', time: new Date().toLocaleTimeString(), text: 'Log cleared.' }])}
-                className="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 transition-colors cursor-pointer"
-              >
-                Clear Log
-              </button>
+
+              {/* Scroll Up/Down & Clear Controls */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => scrollTranscript('up')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer border border-slate-700"
+                  title="Scroll Up to see earlier logs"
+                >
+                  <ChevronUp className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Scroll Up</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollTranscript('down')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer border border-slate-700"
+                  title="Scroll Down to see latest logs"
+                >
+                  <ChevronDown className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Scroll Down</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTranscript([{ type: 'system', time: new Date().toLocaleTimeString(), text: 'Log cleared.' }])}
+                  className="text-xs text-slate-300 hover:text-white px-3 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 transition-colors cursor-pointer border border-slate-700 flex items-center gap-1"
+                >
+                  <Trash2 className="w-3 h-3 text-rose-400" />
+                  <span>Clear Log</span>
+                </button>
+              </div>
             </div>
 
-            <div className="bg-[#040813] border border-slate-800/90 rounded-2xl p-4 max-h-[160px] overflow-y-auto flex flex-col gap-1.5 font-mono text-xs shadow-inner">
+            {/* Scrollable Container with Smooth Scroll */}
+            <div
+              ref={transcriptContainerRef}
+              className="bg-[#030612] border border-slate-800/90 rounded-2xl p-4 max-h-[170px] overflow-y-auto flex flex-col gap-1.5 font-mono text-xs shadow-inner scroll-smooth"
+            >
               {transcript.map((entry, i) => (
-                <div key={i} className="flex items-start gap-2.5">
+                <div key={i} className="flex items-start gap-2.5 py-0.5 border-b border-slate-900/60 last:border-0">
                   <span className="text-slate-500 shrink-0 select-none">[{entry.time}]</span>
                   <span className={
                     entry.type === 'caller'
@@ -1018,58 +1053,75 @@ export const TollFreePanel: React.FC = () => {
                   </span>
                 </div>
               ))}
-              <div ref={transcriptBottomRef} />
             </div>
           </div>
 
           {/* ─────────────────────────────────────────────────────────── */}
           {/* 3. AUTHORIZED CALLERS & ACCESS CONTROL (WHITELIST/BLOCKLIST)*/}
           {/* ─────────────────────────────────────────────────────────── */}
-          <div className="bg-[#0b132b]/95 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4">
+          <div className="bg-[#091326] border border-cyan-500/35 rounded-3xl p-5 sm:p-6 shadow-[0_0_24px_rgba(6,182,212,0.12)] flex flex-col gap-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
                 <ShieldCheck className="w-5 h-5 text-cyan-400" />
                 <h3 className="text-base font-black text-white tracking-wide">Authorized Callers &amp; Access Control (Whitelist &amp; Blocklist)</h3>
               </div>
+
+              {/* Stats Pills & Scroll Up/Down */}
               <div className="flex items-center gap-2 font-mono text-xs">
                 <span className="px-3 py-1 rounded-full bg-slate-800 text-slate-200 font-bold">Total: {totalReg}</span>
                 <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">Active: {activeReg}</span>
                 <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold">Blocked: {blockedReg}</span>
+                <button
+                  type="button"
+                  onClick={() => scrollCallersTable('up')}
+                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer border border-slate-700"
+                  title="Scroll Up Callers Table"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollCallersTable('down')}
+                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer border border-slate-700"
+                  title="Scroll Down Callers Table"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
 
             {/* Quick Add Number Form */}
-            <form onSubmit={handleAddCaller} className="bg-[#070e1e] border border-slate-800 rounded-2xl p-4 flex flex-wrap gap-3 items-end shadow-sm">
+            <form onSubmit={handleAddCaller} className="bg-[#050c1c] border border-slate-800 rounded-2xl p-4 flex flex-wrap gap-3 items-end shadow-sm">
               <div className="flex-1 min-w-[160px] flex flex-col gap-1.5">
-                <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Phone Number (E.164):</label>
+                <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">PHONE NUMBER (E.164):</label>
                 <input
                   type="text"
                   placeholder="+91 98765 43210"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                   required
-                  className="bg-[#030814] border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none focus:border-cyan-400"
+                  className="bg-[#02050e] border border-slate-700 rounded-xl px-3 py-2 text-xs font-mono text-white outline-none focus:border-cyan-400"
                 />
               </div>
 
               <div className="flex-1 min-w-[160px] flex flex-col gap-1.5">
-                <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Personnel Name / Unit:</label>
+                <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">PERSONNEL NAME / UNIT:</label>
                 <input
                   type="text"
                   placeholder="e.g. Substation Lead Officer"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   required
-                  className="bg-[#030814] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-cyan-400"
+                  className="bg-[#02050e] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-cyan-400"
                 />
               </div>
 
               <div className="w-[140px] flex flex-col gap-1.5">
-                <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Security Role:</label>
+                <label className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">SECURITY ROLE:</label>
                 <select
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value as any)}
-                  className="bg-[#030814] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-cyan-400 cursor-pointer"
+                  className="bg-[#02050e] border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-cyan-400 cursor-pointer"
                 >
                   <option value="OPERATOR">OPERATOR</option>
                   <option value="GRID_ADMIN">GRID ADMIN</option>
@@ -1083,27 +1135,30 @@ export const TollFreePanel: React.FC = () => {
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Register Number</span>
+                <span>+ Register Number</span>
               </button>
             </form>
 
-            {/* Registry Table */}
-            <div className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[220px]">
+            {/* Registry Table with Up/Down Scroll */}
+            <div
+              ref={callersTableContainerRef}
+              className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[220px] scroll-smooth"
+            >
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#050b18] text-slate-400 uppercase text-[10px] font-mono sticky top-0 border-b border-slate-800">
+                <thead className="bg-[#040814] text-slate-400 uppercase text-[10px] font-mono sticky top-0 border-b border-slate-800 z-10">
                   <tr>
-                    <th className="p-3">Phone Number</th>
-                    <th className="p-3">Authorized Personnel</th>
-                    <th className="p-3">Role</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Access Action</th>
+                    <th className="p-3">PHONE NUMBER</th>
+                    <th className="p-3">AUTHORIZED PERSONNEL</th>
+                    <th className="p-3">ROLE</th>
+                    <th className="p-3">STATUS</th>
+                    <th className="p-3 text-right">ACCESS ACTION</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 bg-[#060e20]">
                   {registeredCallers.map((caller) => {
                     const isBlocked = caller.status === 'BLOCKED';
                     return (
-                      <tr key={caller.phoneNumber} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={caller.phoneNumber} className="hover:bg-slate-800/40 transition-colors">
                         <td className="p-3 font-mono font-bold text-cyan-300">{caller.phoneNumber}</td>
                         <td className="p-3 font-semibold text-white">{caller.displayName}</td>
                         <td className="p-3 font-mono text-[10px] text-slate-400">{caller.role}</td>
@@ -1144,37 +1199,61 @@ export const TollFreePanel: React.FC = () => {
           </div>
 
           {/* ─────────────────────────────────────────────────────────── */}
-          {/* 4. DATABASE CALL AUDIT LOG                                  */}
+          {/* 4. DATABASE CALL AUDIT LOG WITH SCROLL UP/DOWN CONTROLS     */}
           {/* ─────────────────────────────────────────────────────────── */}
-          <div className="bg-[#0b132b]/95 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4">
+          <div className="bg-[#091326] border border-cyan-500/35 rounded-3xl p-5 sm:p-6 shadow-[0_0_24px_rgba(6,182,212,0.12)] flex flex-col gap-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5">
                 <ShieldAlert className="w-5 h-5 text-emerald-400" />
                 <h3 className="text-base font-black text-white tracking-wide">Call Audit Log: Toll-Free Access &amp; Spoken Responses</h3>
               </div>
+
+              {/* Scroll Up/Down & Clear DB */}
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setCallLogs([])}
-                  className="text-xs text-slate-300 hover:text-rose-400 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => scrollAuditLog('up')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer border border-slate-700"
+                  title="Scroll Up Audit Log"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <ChevronUp className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Scroll Up</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollAuditLog('down')}
+                  className="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer border border-slate-700"
+                  title="Scroll Down Audit Log"
+                >
+                  <ChevronDown className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Scroll Down</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCallLogs([])}
+                  className="text-xs text-slate-300 hover:text-rose-400 px-3 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer border border-slate-700"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
                   <span>Clear DB</span>
                 </button>
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[240px]">
+            {/* Scrollable Table Container with Smooth Scroll */}
+            <div
+              ref={auditTableContainerRef}
+              className="overflow-x-auto border border-slate-800/80 rounded-2xl max-h-[250px] scroll-smooth"
+            >
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#050b18] text-slate-400 uppercase text-[10px] font-mono sticky top-0 border-b border-slate-800">
+                <thead className="bg-[#040814] text-slate-400 uppercase text-[10px] font-mono sticky top-0 border-b border-slate-800 z-10">
                   <tr>
-                    <th className="p-3">Timestamp</th>
-                    <th className="p-3">Caller Identity</th>
-                    <th className="p-3">Access Result</th>
-                    <th className="p-3">Lang</th>
-                    <th className="p-3">Tower</th>
-                    <th className="p-3">Telemetry</th>
-                    <th className="p-3">Spoken Audio Response</th>
+                    <th className="p-3">TIMESTAMP</th>
+                    <th className="p-3">CALLER IDENTITY</th>
+                    <th className="p-3">ACCESS RESULT</th>
+                    <th className="p-3">LANG</th>
+                    <th className="p-3">TOWER</th>
+                    <th className="p-3">TELEMETRY</th>
+                    <th className="p-3">SPOKEN AUDIO RESPONSE</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 bg-[#060e20]">
@@ -1186,7 +1265,7 @@ export const TollFreePanel: React.FC = () => {
                     </tr>
                   ) : (
                     callLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-800/30 transition-colors">
+                      <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
                         <td className="p-3 font-mono text-[11px] text-slate-400 whitespace-nowrap">{log.timestamp}</td>
                         <td className="p-3">
                           <div className="font-mono font-bold text-amber-300">{log.callerNumber}</div>
