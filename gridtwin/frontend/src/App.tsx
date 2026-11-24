@@ -13,6 +13,7 @@ import { HardwareBridgePanel } from './components/dashboard/HardwareBridgePanel'
 import { ScenarioLabPanel } from './components/dashboard/ScenarioLabPanel';
 import { ElementInspectorModal } from './components/dashboard/ElementInspectorModal';
 import { TowerDetailsPanel } from './components/dashboard/TowerDetailsPanel';
+import { TollFreePanel } from './components/dashboard/TollFreePanel';
 
 export function App() {
   const { activeTab, syncWithBackendData, fetchHardwareStatus, handleWebSocketMessage } = useGridStore();
@@ -145,6 +146,13 @@ export function App() {
               <div className="flex flex-col gap-5">
                 <SingleLineDiagram />
                 <SwitchControlPanel />
+              </div>
+            )}
+
+            {/* TOLL-FREE HOTLINE & ACCESS CONTROL */}
+            {activeTab === 'toll-free' && (
+              <div className="flex flex-col gap-5">
+                <TollFreePanel />
               </div>
             )}
 

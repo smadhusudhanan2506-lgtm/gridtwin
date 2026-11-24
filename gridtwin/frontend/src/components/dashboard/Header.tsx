@@ -22,7 +22,8 @@ export const Header: React.FC = () => {
     physicalSyncEnabled,
     setPhysicalSync,
     isMobileNavOpen,
-    toggleMobileNav
+    toggleMobileNav,
+    setActiveTab
   } = useGridStore();
 
   const [time, setTime] = useState(new Date());
@@ -83,6 +84,16 @@ export const Header: React.FC = () => {
 
       {/* Right: ESP32 Hardware Status, Mode, and Profile */}
       <div className="flex items-center gap-1.5 sm:gap-3">
+        {/* Toll-Free Hotline Helpline Pill */}
+        <button
+          onClick={() => setActiveTab('toll-free')}
+          className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-500/50 text-indigo-300 text-xs font-mono font-bold transition-all shadow-inner cursor-pointer"
+          title="Open Toll-Free Voice Hotline & Access Control"
+        >
+          <PhoneCall className="w-3.5 h-3.5 text-indigo-400" />
+          <span>+1 573 859 5176 Helpline</span>
+        </button>
+
         {/* Mode Selector Pill */}
         <button
           onClick={() => setHardwareMode(hardwareMode === 'PHYSICAL' ? 'SIMULATION' : 'PHYSICAL')}

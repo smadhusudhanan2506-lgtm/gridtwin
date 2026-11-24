@@ -11,7 +11,8 @@ import {
   Settings,
   Zap,
   GitFork,
-  X
+  X,
+  PhoneCall
 } from 'lucide-react';
 
 export const LeftSidebar: React.FC = () => {
@@ -21,6 +22,7 @@ export const LeftSidebar: React.FC = () => {
     { id: 'dashboard', label: 'Home', icon: Home, badge: null },
     { id: '3d-twin', label: '3D Lab', icon: Box, badge: null },
     { id: 'sld', label: '2D Lab', icon: Layers, badge: null },
+    { id: 'toll-free', label: 'Toll-Free', icon: PhoneCall, badge: 'HOTLINE' },
     { id: 'overview', label: 'Grid Overview', icon: GitFork, badge: null },
     { id: 'monitoring', label: 'Monitoring', icon: Activity, badge: null },
     { id: 'hardware', label: 'Devices', icon: Cpu, badge: null },
@@ -51,6 +53,7 @@ export const LeftSidebar: React.FC = () => {
             (item.id === 'dashboard' && (activeTab === 'dashboard' || (activeTab as any) === 'home')) ||
             (item.id === '3d-twin' && activeTab === '3d-twin') ||
             (item.id === 'sld' && activeTab === 'sld') ||
+            (item.id === 'toll-free' && activeTab === 'toll-free') ||
             (item.id === 'overview' && (activeTab as any) === 'overview') ||
             (item.id === 'monitoring' && (activeTab as any) === 'monitoring') ||
             (item.id === 'hardware' && activeTab === 'hardware') ||

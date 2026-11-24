@@ -46,7 +46,7 @@ interface GridState {
   currentMetric: SimulationMetric;
 
   // UI & View state
-  activeTab: 'dashboard' | '3d-twin' | 'sld' | 'hardware' | 'analytics' | 'scenarios' | 'monitoring' | 'devices' | 'alerts' | 'settings' | 'overview';
+  activeTab: 'dashboard' | '3d-twin' | 'sld' | 'hardware' | 'analytics' | 'scenarios' | 'monitoring' | 'devices' | 'alerts' | 'settings' | 'overview' | 'toll-free';
   isMobileNavOpen: boolean;
   setMobileNavOpen: (open: boolean) => void;
   toggleMobileNav: () => void;
@@ -85,7 +85,7 @@ interface GridState {
   toggleHardwareLogic: (action?: 'INVERT' | 'ACTIVE_HIGH' | 'ACTIVE_LOW') => Promise<void>;
   setSelectedElement: (element: SelectedElement | null) => void;
   setCameraPreset: (preset: 'overview' | 'substation' | 'feeder1-3' | 'feeder4-5' | 'loads' | 'top' | 'side') => void;
-  setActiveTab: (tab: 'dashboard' | '3d-twin' | 'sld' | 'hardware' | 'analytics' | 'scenarios' | 'monitoring' | 'devices' | 'alerts' | 'settings' | 'overview') => void;
+  setActiveTab: (tab: 'dashboard' | '3d-twin' | 'sld' | 'hardware' | 'analytics' | 'scenarios' | 'monitoring' | 'devices' | 'alerts' | 'settings' | 'overview' | 'toll-free') => void;
   setPhysicalSync: (enabled: boolean) => void;
   setHardwareMode: (mode: HardwareMode) => void;
   recomputeConnectivity: () => void;
