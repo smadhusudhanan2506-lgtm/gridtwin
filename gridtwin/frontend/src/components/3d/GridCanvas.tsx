@@ -575,6 +575,11 @@ export const GridCanvas: React.FC = () => {
             const isSwitchClosed = switchMap[sec.swId] === 'CLOSED';
             const isLoadEnergized = isTowerEnergized && isSwitchClosed;
 
+            // When Reverse Feed is ON, backfeed current flows reverse from building to tower in red
+            const isReverseFeedBranch = isReverseFeedActive && (isThisIsolated || isoList.length === 0);
+            const isBranchEnergized = isLoadEnergized || isReverseFeedBranch;
+            const isDropEnergized = isTowerEnergized || isReverseFeedBranch;
+
             return (
               <React.Fragment key={sec.id}>
                 {/* Modern Sleek Tower Badge matching reference design */}
@@ -632,8 +637,9 @@ export const GridCanvas: React.FC = () => {
                 <PowerLine3D
                   start={[sec.towerPos[0], (sec.height * 0.68 - 0.85) * towerScale, sec.towerPos[2] + 2.0 * towerScale]}
                   end={[sec.switchPos[0], 6.5, sec.switchPos[2]]}
-                  isEnergized={isTowerEnergized}
+                  isEnergized={isDropEnergized}
                   sag={0.3}
+                  reverseFlow={isReverseFeedBranch}
                 />
 
                 {/* Section Circuit Breaker / Switchgear */}
@@ -641,7 +647,7 @@ export const GridCanvas: React.FC = () => {
                   position={sec.switchPos}
                   switchId={sec.swId}
                   name={sec.name}
-                  state={(switchMap[sec.swId] || 'CLOSED') as any}
+                  state={(isReverseFeedBranch ? 'CLOSED' : (switchMap[sec.swId] || 'CLOSED')) as any}
                   sectionId={sec.id}
                   gpioPin={sec.gpio}
                 />
@@ -650,8 +656,9 @@ export const GridCanvas: React.FC = () => {
                 <PowerLine3D
                   start={[sec.switchPos[0], 5.0, sec.switchPos[2]]}
                   end={[sec.txPos[0], 2.4, sec.txPos[2]]}
-                  isEnergized={isLoadEnergized}
+                  isEnergized={isBranchEnergized}
                   sag={0.25}
+                  reverseFlow={isReverseFeedBranch}
                 />
 
                 {/* 11kV to 415V Step-down Distribution Transformer */}
@@ -659,16 +666,18 @@ export const GridCanvas: React.FC = () => {
                   position={sec.txPos}
                   transformerId={`TX-${sec.id}`}
                   name={`Step-Down Transformer TX-${sec.id}`}
-                  isEnergized={isLoadEnergized}
+                  isEnergized={isBranchEnergized}
                   sectionId={sec.id}
+                  isReverseFeed={isReverseFeedBranch}
                 />
 
                 {/* Low Voltage (415V) Feeder Cable into Consumer Facility */}
                 <PowerLine3D
                   start={[sec.txPos[0], 1.2, sec.txPos[2] + 1.2]}
                   end={[sec.loadPos[0], 1.4, sec.loadPos[2] - 4.5]}
-                  isEnergized={isLoadEnergized}
+                  isEnergized={isBranchEnergized}
                   sag={0.2}
+                  reverseFlow={isReverseFeedBranch}
                 />
 
                 {/* Architectural Consumer Building */}
@@ -676,7 +685,7 @@ export const GridCanvas: React.FC = () => {
                   position={sec.loadPos}
                   loadId={`LOAD-${sec.id}`}
                   name={sec.loadName}
-                  isEnergized={isLoadEnergized}
+                  isEnergized={isBranchEnergized}
                   category={sec.category}
                   demandKw={sec.demandKw}
                   sectionId={sec.id}

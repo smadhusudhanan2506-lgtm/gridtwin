@@ -364,6 +364,7 @@ export const SingleLineDiagram: React.FC = () => {
           {sections.map((sec) => {
             const towerColor = sec.isIso ? '#ef4444' : sec.isLive ? '#0ea5e9' : '#64748b';
             const statusTextColor = sec.isIso ? '#ef4444' : sec.isLive ? '#10b981' : '#94a3b8';
+            const isReverseFeedBranch = isReverseFeedActive && (sec.isIso || isoList.length === 0);
 
             return (
               <g key={sec.id}>
@@ -376,7 +377,7 @@ export const SingleLineDiagram: React.FC = () => {
                     height="32"
                     rx="8"
                     fill="#071126"
-                    stroke={sec.isIso ? '#fbbf24' : '#0284c7'}
+                    stroke={sec.isIso ? '#ef4444' : '#0284c7'}
                     strokeWidth="1.5"
                   />
                   <text x="0" y="-3" fill="#ffffff" fontSize="11" textAnchor="middle" fontWeight="bold">
@@ -398,7 +399,7 @@ export const SingleLineDiagram: React.FC = () => {
                     cx="0"
                     cy="0"
                     r="24"
-                    fill={sec.isIso ? '#2d1a04' : '#07132c'}
+                    fill={sec.isIso ? '#2d0a0a' : '#07132c'}
                     stroke={towerColor}
                     strokeWidth={sec.isIso ? '3.5' : '2.5'}
                     className="transition-colors duration-300"
@@ -416,7 +417,7 @@ export const SingleLineDiagram: React.FC = () => {
                     {/* Foundation tie */}
                     <line x1="-7" y1="9" x2="7" y2="9" />
                     {/* Apex Warning Spire */}
-                    <circle cx="0" cy="-14" r="1.5" fill={sec.isIso ? '#fbbf24' : '#ef4444'} />
+                    <circle cx="0" cy="-14" r="1.5" fill={sec.isIso ? '#ef4444' : '#ef4444'} />
                   </g>
                 </g>
 
@@ -427,22 +428,26 @@ export const SingleLineDiagram: React.FC = () => {
                   y1="134"
                   x2={sec.x}
                   y2="178"
-                  stroke={sec.isLive ? '#0ea5e9' : '#475569'}
-                  strokeWidth="2.5"
-                  strokeDasharray={sec.isLive ? undefined : '4 3'}
+                  stroke={isReverseFeedBranch ? '#ef4444' : sec.isLive ? '#0ea5e9' : '#475569'}
+                  strokeWidth={isReverseFeedBranch ? '3.5' : '2.5'}
+                  strokeDasharray={sec.isLive || isReverseFeedBranch ? undefined : '4 3'}
                 />
+                {isReverseFeedBranch && (
+                  /* Upward arrow indicating backfeed flow into tower */
+                  <path d={`M ${sec.x - 5} 148 L ${sec.x} 138 L ${sec.x + 5} 148 Z`} fill="#ef4444" />
+                )}
 
                 {/* Local Section Disconnect Switch */}
                 <g transform={`translate(${sec.x}, 160)`} className="cursor-pointer" onClick={() => isolateTower(sec.id)}>
-                  <rect x="-10" y="-8" width="20" height="16" rx="4" fill="#07132c" stroke={sec.isLive ? '#10b981' : '#ef4444'} strokeWidth="1.5" />
-                  <line x1="-5" y1="0" x2="5" y2="0" stroke={sec.isLive ? '#10b981' : '#ef4444'} strokeWidth="2.5" />
+                  <rect x="-10" y="-8" width="20" height="16" rx="4" fill="#07132c" stroke={isReverseFeedBranch ? '#ef4444' : sec.isLive ? '#10b981' : '#ef4444'} strokeWidth="1.5" />
+                  <line x1="-5" y1="0" x2="5" y2="0" stroke={isReverseFeedBranch ? '#ef4444' : sec.isLive ? '#10b981' : '#ef4444'} strokeWidth="2.5" />
                 </g>
 
                 {/* Local Distribution Transformer (11kV to 415V) */}
                 <g transform={`translate(${sec.x}, 200)`}>
-                  <circle cx="0" cy="-6" r="10" fill="none" stroke={sec.isLive ? '#38bdf8' : '#475569'} strokeWidth="2" />
-                  <circle cx="0" cy="6" r="10" fill="none" stroke={sec.isLive ? '#38bdf8' : '#475569'} strokeWidth="2" />
-                  <text x="18" y="3" fill="#94a3b8" fontSize="8" fontFamily="monospace">11kV/415V</text>
+                  <circle cx="0" cy="-6" r="10" fill="none" stroke={isReverseFeedBranch ? '#ef4444' : sec.isLive ? '#38bdf8' : '#475569'} strokeWidth="2" />
+                  <circle cx="0" cy="6" r="10" fill="none" stroke={isReverseFeedBranch ? '#ef4444' : sec.isLive ? '#38bdf8' : '#475569'} strokeWidth="2" />
+                  <text x="18" y="3" fill={isReverseFeedBranch ? '#f87171' : '#94a3b8'} fontSize="8" fontFamily="monospace">11kV/415V</text>
                 </g>
 
                 {/* Drop from transformer to consumer load */}
@@ -451,9 +456,13 @@ export const SingleLineDiagram: React.FC = () => {
                   y1="216"
                   x2={sec.x}
                   y2="242"
-                  stroke={sec.isLive ? '#10b981' : '#475569'}
-                  strokeWidth="2.5"
+                  stroke={isReverseFeedBranch ? '#ef4444' : sec.isLive ? '#10b981' : '#475569'}
+                  strokeWidth={isReverseFeedBranch ? '3.5' : '2.5'}
                 />
+                {isReverseFeedBranch && (
+                  /* Upward arrow indicating backfeed flow from building to transformer */
+                  <path d={`M ${sec.x - 5} 228 L ${sec.x} 218 L ${sec.x + 5} 228 Z`} fill="#ef4444" />
+                )}
 
                 {/* Consumer Load Building Box */}
                 <g transform={`translate(${sec.x}, 268)`}>
@@ -464,8 +473,8 @@ export const SingleLineDiagram: React.FC = () => {
                     height="40"
                     rx="8"
                     fill="#0b1736"
-                    stroke={sec.isLive ? '#10b981' : '#475569'}
-                    strokeWidth={sec.isLive ? '2' : '1.5'}
+                    stroke={isReverseFeedBranch ? '#ef4444' : sec.isLive ? '#10b981' : '#475569'}
+                    strokeWidth={isReverseFeedBranch || sec.isLive ? '2' : '1.5'}
                   />
                   <text x="0" y="-4" fill="#f8fafc" fontSize="10" textAnchor="middle" fontWeight="bold">
                     {sec.loadName}
@@ -473,13 +482,13 @@ export const SingleLineDiagram: React.FC = () => {
                   <text
                     x="0"
                     y="11"
-                    fill={sec.isLive ? '#34d399' : '#f87171'}
-                    fontSize="10"
+                    fill={isReverseFeedBranch ? '#f87171' : sec.isLive ? '#34d399' : '#f87171'}
+                    fontSize={isReverseFeedBranch ? '9' : '10'}
                     textAnchor="middle"
                     fontWeight="extrabold"
                     fontFamily="monospace"
                   >
-                    {sec.isLive ? `${sec.demandKw} kW` : '0 kW (OFF)'}
+                    {isReverseFeedBranch ? '▲ REVERSE FEED' : sec.isLive ? `${sec.demandKw} kW` : '0 kW (OFF)'}
                   </text>
                 </g>
 

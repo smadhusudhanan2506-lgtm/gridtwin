@@ -8,6 +8,7 @@ interface Transformer3DProps {
   name: string;
   isEnergized: boolean;
   sectionId: string;
+  isReverseFeed?: boolean;
 }
 
 export const Transformer3D: React.FC<Transformer3DProps> = ({
@@ -16,6 +17,7 @@ export const Transformer3D: React.FC<Transformer3DProps> = ({
   name,
   isEnergized,
   sectionId,
+  isReverseFeed = false,
 }) => {
   const setSelectedElement = useGridStore((s) => s.setSelectedElement);
   const showLabels = useGridStore((s) => s.showLabels);
@@ -27,23 +29,24 @@ export const Transformer3D: React.FC<Transformer3DProps> = ({
       type: 'transformer',
       title: name,
       voltage_kv: 0.415,
-      status: isEnergized ? 'ENERGIZED - STEP DOWN ACTIVE' : 'COLD - DE-ENERGIZED',
-      current_a: isEnergized ? 485.0 : 0,
-      power_kw: isEnergized ? 320.0 : 0,
+      status: isReverseFeed ? 'REVERSE FEED - BACKFLOW STEP-UP' : isEnergized ? 'ENERGIZED - STEP DOWN ACTIVE' : 'COLD - DE-ENERGIZED',
+      current_a: isEnergized || isReverseFeed ? 485.0 : 0,
+      power_kw: isEnergized || isReverseFeed ? 320.0 : 0,
       details: {
         'Rating': '500 kVA Dyn11',
         'Primary Voltage': '11,000 V (11 kV Delta)',
         'Secondary Voltage': '415 V (400/230V Star with Neutral)',
         'Cooling': 'ONAN (Mineral Oil Immersed)',
         'Impedance (%Z)': '4.5%',
-        'Winding Temp': isEnergized ? '52.4 °C' : '24.1 °C (Ambient)',
+        'Operating Mode': isReverseFeed ? '⚠️ REVERSE FEED (Power Backflow from Consumer Load)' : 'Normal Step-Down Supply',
+        'Winding Temp': isEnergized || isReverseFeed ? '52.4 °C' : '24.1 °C (Ambient)',
         'Section Fed': sectionId,
         'Downstream': '415V Distribution Pillar & Consumer Feeders'
       }
     });
   };
 
-  const statusGlowColor = isEnergized ? '#10b981' : '#64748b';
+  const statusGlowColor = isReverseFeed ? '#ef4444' : isEnergized ? '#10b981' : '#64748b';
 
   return (
     <group position={position} onClick={handleClick}>
@@ -124,11 +127,11 @@ export const Transformer3D: React.FC<Transformer3DProps> = ({
           <Text
             position={[0, -0.14, 0]}
             fontSize={0.18}
-            color={isEnergized ? '#10b981' : '#ef4444'}
+            color={isReverseFeed ? '#ef4444' : isEnergized ? '#10b981' : '#ef4444'}
             anchorX="center"
             anchorY="middle"
           >
-            {isEnergized ? 'ENERGIZED' : 'DE-ENERGIZED'}
+            {isReverseFeed ? 'REVERSE FEED' : isEnergized ? 'ENERGIZED' : 'DE-ENERGIZED'}
           </Text>
         </group>
       )}
