@@ -66,11 +66,14 @@ interface GridState {
   isolatedTowerId: 'T1' | 'T2' | 'T3' | 'T4' | 'T5' | null;
   isolatedTowers: ('T1' | 'T2' | 'T3' | 'T4' | 'T5')[];
   isT3Isolated: boolean;
+  isReverseFeedActive: boolean;
 
   // Actions
   toggleSwitch: (switchId: string, bypassInterlock?: boolean) => Promise<void>;
   setSwitchState: (switchId: string, state: SwitchState) => Promise<void>;
   toggleBypassSwitch: () => void;
+  toggleReverseFeed: () => void;
+  setReverseFeed: (active: boolean) => void;
   isolateTower: (towerId: 'T1' | 'T2' | 'T3' | 'T4' | 'T5') => void;
   turnTowerOn: (towerId: 'T1' | 'T2' | 'T3' | 'T4' | 'T5') => void;
   turnTowerOff: (towerId: 'T1' | 'T2' | 'T3' | 'T4' | 'T5') => void;
@@ -349,6 +352,31 @@ export const useGridStore = create<GridState>((set, get) => ({
   isolatedTowerId: null as 'T1' | 'T2' | 'T3' | 'T4' | 'T5' | null,
   isolatedTowers: [] as ('T1' | 'T2' | 'T3' | 'T4' | 'T5')[],
   isT3Isolated: false,
+  isReverseFeedActive: false,
+
+  toggleReverseFeed: () => {
+    const next = !get().isReverseFeedActive;
+    set({ isReverseFeedActive: next });
+    if (next) {
+      get().addAlert({
+        severity: 'CRITICAL',
+        source: 'REVERSE_FEED_DETECTOR',
+        message: 'DANGER: Reverse Feed backflow current detected on isolated corridor! Hazard alarm active.',
+        is_active: true
+      });
+    } else {
+      get().addAlert({
+        severity: 'INFO',
+        source: 'REVERSE_FEED_DETECTOR',
+        message: 'Reverse feed deactivated. Grid returned to standard isolation state.',
+        is_active: true
+      });
+    }
+  },
+
+  setReverseFeed: (active: boolean) => {
+    set({ isReverseFeedActive: active });
+  },
 
   alerts: [
     {
@@ -1392,7 +1420,21 @@ export const useGridStore = create<GridState>((set, get) => ({
 
   syncWithBackendData: (backendData: any) => {
     if (backendData.switches) {
-      set({ switches: backendData.switches });
+      const userIso = get().isolatedTowers || [];
+      const swIdMap: Record<string, string> = {
+        'T1': 'SW-T1',
+        'T2': 'SW-T2',
+        'T3': 'SW-T3',
+        'T4': 'SW-T4',
+        'T5': 'SW-T5',
+      };
+      const protectedSwitches = backendData.switches.map((s: any) => {
+        const isIso = Object.entries(swIdMap).some(
+          ([tId, swId]) => userIso.includes(tId as any) && (swId === s.switch_id || s.switch_id === swId.replace('-', ''))
+        );
+        return isIso ? { ...s, state: 'OPEN' as SwitchState } : s;
+      });
+      set({ switches: protectedSwitches });
     }
     if (backendData.device) {
       set(state => {

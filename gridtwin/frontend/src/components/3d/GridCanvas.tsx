@@ -1,8 +1,9 @@
-import React, { Suspense, useRef } from 'react';
+import React, { Suspense, useRef, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGridStore } from '../../store/useGridStore';
+import { reverseFeedBuzzer } from '../../utils/buzzerAudio';
 import { SceneEnvironment } from './SceneEnvironment';
 import { CameraBookmarks } from './CameraBookmarks';
 import { Substation3D } from './Substation3D';
@@ -155,6 +156,8 @@ export const GridCanvas: React.FC = () => {
     toggleBypassSwitch,
     isolatedTowerId,
     isolatedTowers = [],
+    isReverseFeedActive,
+    toggleReverseFeed,
     isolateTower,
     turnTowerOn,
     turnTowerOff,
@@ -166,6 +169,18 @@ export const GridCanvas: React.FC = () => {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+  // SCADA Reverse Feed Hazard Buzzer Alarm
+  useEffect(() => {
+    if (isReverseFeedActive) {
+      reverseFeedBuzzer.start();
+    } else {
+      reverseFeedBuzzer.stop();
+    }
+    return () => {
+      reverseFeedBuzzer.stop();
+    };
+  }, [isReverseFeedActive]);
 
   React.useEffect(() => {
     const handleFsChange = () => {
@@ -243,24 +258,27 @@ export const GridCanvas: React.FC = () => {
   const mainReachT5 = mainReachT4 && !isT5Iso;
 
   // Tower Energization:
-  // - Isolated towers NEVER receive current (0 A).
-  // - Non-isolated towers are energized if:
-  //   (a) Bypass is ON (isBypassClosed): alternate bypass bus feeds all healthy towers!
-  //   (b) Unbroken main route reaches the tower.
-  const isTower1Energized = !isT1Iso && (mainReachT1 || isBypassClosed);
-  const isTower2Energized = !isT2Iso && (mainReachT2 || isBypassClosed);
-  const isTower3Energized = !isT3Iso && (mainReachT3 || isBypassClosed);
-  const isTower4Energized = !isT4Iso && (mainReachT4 || isBypassClosed);
-  const isTower5Energized = !isT5Iso && (mainReachT5 || isBypassClosed);
+  // - When Reverse Feed is ON: Backfeed current flows through the whole line including isolated towers!
+  // - When Reverse Feed is OFF:
+  //   - Isolated towers NEVER receive current (0 A).
+  //   - Non-isolated towers are energized if:
+  //     (a) Bypass is ON (isBypassClosed): alternate bypass bus feeds all healthy towers!
+  //     (b) Unbroken main route reaches the tower.
+  const isTower1Energized = isReverseFeedActive || (!isT1Iso && (mainReachT1 || isBypassClosed));
+  const isTower2Energized = isReverseFeedActive || (!isT2Iso && (mainReachT2 || isBypassClosed));
+  const isTower3Energized = isReverseFeedActive || (!isT3Iso && (mainReachT3 || isBypassClosed));
+  const isTower4Energized = isReverseFeedActive || (!isT4Iso && (mainReachT4 || isBypassClosed));
+  const isTower5Energized = isReverseFeedActive || (!isT5Iso && (mainReachT5 || isBypassClosed));
 
   const towerEnergizedMap = [isTower1Energized, isTower2Energized, isTower3Energized, isTower4Energized, isTower5Energized];
 
   // Main transmission route interlink conductors between towers along Z = 0
-  const isSpanSubToT1Live = !isT1Iso;
-  const isSpanT1ToT2Live = !isT1Iso && !isT2Iso && isTower1Energized;
-  const isSpanT2ToT3Live = !isT2Iso && !isT3Iso && isTower2Energized;
-  const isSpanT3ToT4Live = !isT3Iso && !isT4Iso && isTower3Energized;
-  const isSpanT4ToT5Live = !isT4Iso && !isT5Iso && isTower4Energized;
+  // When Reverse Feed is active, current flows straight through the corridor!
+  const isSpanSubToT1Live = isReverseFeedActive || !isT1Iso;
+  const isSpanT1ToT2Live = isReverseFeedActive || (!isT1Iso && !isT2Iso && isTower1Energized);
+  const isSpanT2ToT3Live = isReverseFeedActive || (!isT2Iso && !isT3Iso && isTower2Energized);
+  const isSpanT3ToT4Live = isReverseFeedActive || (!isT3Iso && !isT4Iso && isTower3Energized);
+  const isSpanT4ToT5Live = isReverseFeedActive || (!isT4Iso && !isT5Iso && isTower4Energized);
 
   // Perfectly aligned Transmission Corridor along Z = 0
   const sections = [
@@ -428,36 +446,37 @@ export const GridCanvas: React.FC = () => {
           {/* ─────────────────────────────────────────────────────────── */}
           {/* VISUAL CURRENT BLOCKING BARRIERS AROUND ISOLATED TOWERS      */}
           {/* Blocks power flow into and out of isolated towers           */}
+          {/* When Reverse Feed is ON, cross marks are hidden             */}
           {/* ─────────────────────────────────────────────────────────── */}
-          {isoList.includes('T1') && (
+          {!isReverseFeedActive && isoList.includes('T1') && (
             <group>
               <IsolationBarrier3D position={[-41, 10.5, 0]} label="T1 IN-FLOW BLOCKED" />
               <IsolationBarrier3D position={[-23, 10.5, 0]} label="T1 OUT-FLOW BLOCKED" />
             </group>
           )}
 
-          {isoList.includes('T2') && (
+          {!isReverseFeedActive && isoList.includes('T2') && (
             <group>
               <IsolationBarrier3D position={[-23, 10.5, 0]} label="T2 IN-FLOW BLOCKED" />
               <IsolationBarrier3D position={[-5, 10.5, 0]} label="T2 OUT-FLOW BLOCKED" />
             </group>
           )}
 
-          {isoList.includes('T3') && (
+          {!isReverseFeedActive && isoList.includes('T3') && (
             <group>
               <IsolationBarrier3D position={[-5, 10.5, 0]} label="T3 IN-FLOW BLOCKED" />
               <IsolationBarrier3D position={[13, 10.5, 0]} label="T3 OUT-FLOW BLOCKED" />
             </group>
           )}
 
-          {isoList.includes('T4') && (
+          {!isReverseFeedActive && isoList.includes('T4') && (
             <group>
               <IsolationBarrier3D position={[13, 10.5, 0]} label="T4 IN-FLOW BLOCKED" />
               <IsolationBarrier3D position={[31, 10.5, 0]} label="T4 OUT-FLOW BLOCKED" />
             </group>
           )}
 
-          {isoList.includes('T5') && (
+          {!isReverseFeedActive && isoList.includes('T5') && (
             <group>
               <IsolationBarrier3D position={[31, 10.5, 0]} label="T5 IN-FLOW BLOCKED" />
             </group>
@@ -722,56 +741,57 @@ export const GridCanvas: React.FC = () => {
       </div>
 
         {/* Navigation Compass & View Mode Toolbar (Bottom Left inside 3D screen) */}
-        <div className="absolute bottom-2.5 sm:bottom-4 left-2.5 sm:left-4 z-10 flex items-center gap-2 select-none">
+        {/* Navigation Compass & View Mode Toolbar (Bottom Left inside 3D screen) */}
+        <div className="absolute bottom-4 left-4 z-10 flex items-center gap-2 select-none">
           {/* Circular Nav Compass */}
-          <div className="hidden xs:flex relative w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-slate-900/90 border border-slate-700/70 backdrop-blur-md items-center justify-center shadow-xl shrink-0">
-            <span className="absolute top-0.5 text-[8px] font-bold text-cyan-400 font-mono">N</span>
+          <div className="relative w-10 h-10 rounded-full bg-slate-900/90 border border-slate-700/70 backdrop-blur-md flex items-center justify-center shadow-xl">
+            <span className="absolute top-0.5 text-[7px] font-bold text-cyan-400 font-mono">N</span>
             <Compass className="w-5 h-5 text-cyan-400/80 transform rotate-45" />
           </div>
 
           {/* View Mode Toolbar */}
-          <div className="flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/70 rounded-xl p-1.5 sm:p-2 shadow-2xl">
+          <div className="flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md border border-slate-700/70 rounded-xl p-1.5 shadow-2xl">
             <button
               onClick={() => setCameraPreset('overview')}
-              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                 cameraPreset === 'overview'
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
-              <Box className="w-4 h-4" />
-              <span>3D</span>
+              <Box className="w-3.5 h-3.5" />
+              <span>3D View</span>
             </button>
 
             <button
               onClick={() => setCameraPreset('top')}
-              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                 cameraPreset === 'top'
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
-              <Layers className="w-4 h-4" />
-              <span>Top</span>
+              <Layers className="w-3.5 h-3.5" />
+              <span>Top View</span>
             </button>
 
             <button
               onClick={() => setCameraPreset('side')}
-              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
                 cameraPreset === 'side'
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800'
               }`}
             >
-              <Camera className="w-4 h-4" />
-              <span>Side</span>
+              <Camera className="w-3.5 h-3.5" />
+              <span>Side View</span>
             </button>
 
-            <div className="h-5 w-[1px] bg-slate-700 mx-0.5" />
+            <div className="h-4 w-[1px] bg-slate-700 mx-0.5" />
 
             <button
               onClick={toggleFullscreen}
-              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold transition-all shadow-md active:scale-95 ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-md active:scale-95 ${
                 isFullscreen
                   ? 'bg-cyan-600 text-white shadow-cyan-600/30 ring-1 ring-cyan-400'
                   : 'text-slate-200 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700'
@@ -780,13 +800,13 @@ export const GridCanvas: React.FC = () => {
             >
               {isFullscreen ? (
                 <>
-                  <Minimize2 className="w-4 h-4 text-cyan-200" />
-                  <span>Exit</span>
+                  <Minimize2 className="w-3.5 h-3.5 text-cyan-200" />
+                  <span>Exit Full</span>
                 </>
               ) : (
                 <>
-                  <Maximize2 className="w-4 h-4 text-cyan-400" />
-                  <span>Full</span>
+                  <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Full Screen</span>
                 </>
               )}
             </button>
@@ -794,116 +814,144 @@ export const GridCanvas: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. MODERN THREE-PANEL CONTROL CONSOLE (COMPACT TO MAXIMIZE 3D GRID SCREEN) */}
+      {/* 2. MODERN FOUR-PANEL CONTROL CONSOLE (COMPACT TO MAXIMIZE 3D GRID SCREEN) */}
       <div className="bg-[#071126]/95 border border-slate-800/90 rounded-xl p-2 sm:p-2.5 shadow-2xl flex flex-col gap-2 shrink-0 select-none">
-        {/* Row 1: 3 Modular Command Cards */}
+        {/* Row 1: 4 Modular Command Cards */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2 sm:gap-2.5 items-stretch">
 
           {/* Panel 1: Grid Master */}
-          <div className="md:col-span-4 bg-slate-900/75 border border-slate-800/90 rounded-lg px-3.5 py-2 flex items-center justify-between gap-3 shadow-md">
-            <div className="flex items-center gap-2.5 min-w-0">
+          <div className="md:col-span-3 bg-slate-900/75 border border-slate-800/90 rounded-lg px-3 py-2 flex items-center justify-between gap-2 shadow-md">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 rounded-md bg-blue-600/25 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0 shadow-sm">
                 <FileText className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <h3 className="text-xs sm:text-sm font-extrabold text-white tracking-wide truncate">Grid Master</h3>
-                <p className="text-[11px] text-slate-400 truncate">Control all towers together</p>
+                <p className="text-[10px] text-slate-400 truncate">Control all towers</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={turnAllTowersOn}
-                className="px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center gap-1.5 shadow-md shadow-emerald-500/25 transition-all active:scale-95"
+                className="px-2.5 py-1.5 rounded-full text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center gap-1 shadow-md shadow-emerald-500/25 transition-all active:scale-95"
                 title="Energize ALL 5 towers (Powers relays and turns ON all tower LEDs)"
               >
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>ALL ON</span>
               </button>
 
               <button
                 onClick={turnAllTowersOff}
-                className="px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-black bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+                className="px-2.5 py-1.5 rounded-full text-xs font-black bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1 shadow-sm transition-all active:scale-95"
                 title="Isolate / Turn OFF ALL 5 towers"
               >
-                <Power className="w-4 h-4 text-slate-400" />
+                <Power className="w-3.5 h-3.5 text-slate-400" />
                 <span>ALL OFF</span>
               </button>
             </div>
           </div>
 
           {/* Panel 2: Bypass Bus */}
-          <div className="md:col-span-3 bg-slate-900/75 border border-slate-800/90 rounded-lg px-3.5 py-2 flex items-center justify-between gap-3 shadow-md">
-            <div className="flex items-center gap-2.5 min-w-0">
+          <div className="md:col-span-2 bg-slate-900/75 border border-slate-800/90 rounded-lg px-2.5 py-2 flex items-center justify-between gap-2 shadow-md">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 rounded-md bg-cyan-600/25 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0 shadow-sm">
                 <ArrowLeftRight className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <h3 className="text-xs sm:text-sm font-extrabold text-white tracking-wide truncate">Bypass Bus</h3>
-                <p className="text-[11px] text-slate-400 truncate">Open / Close bypass line</p>
+                <p className="text-[10px] text-slate-400 truncate">Bypass line</p>
               </div>
             </div>
 
             <button
               onClick={toggleBypassSwitch}
-              className={`px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-mono font-bold flex items-center gap-2 border transition-all active:scale-95 shrink-0 ${
+              className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold flex items-center gap-1 border transition-all active:scale-95 shrink-0 ${
                 isBypassClosed
                   ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/70 shadow-sm shadow-emerald-500/20'
                   : 'bg-cyan-950/40 text-cyan-300 border-cyan-500/60 hover:bg-cyan-900/50'
               }`}
               title="Toggle Front Bypass Bus State"
             >
-              <Circle className="w-2.5 h-2.5 text-cyan-400 fill-cyan-400" />
+              <Circle className="w-2 h-2 text-cyan-400 fill-cyan-400" />
               <span>{bypassSwitchState}</span>
             </button>
           </div>
 
-          {/* Panel 3: Individual Towers */}
-          <div className="md:col-span-5 bg-slate-900/75 border border-slate-800/90 rounded-lg px-3.5 py-2 flex items-center justify-between gap-3 shadow-md">
-            <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-              <div className="w-8 h-8 rounded-md bg-indigo-600/25 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 shadow-sm">
-                <Radio className="w-4 h-4" />
+          {/* Panel 3: Reverse Feed */}
+          <div className={`md:col-span-3 bg-slate-900/75 border rounded-lg px-3 py-2 flex items-center justify-between gap-2 shadow-md transition-all ${
+            isReverseFeedActive 
+              ? 'border-rose-500/80 bg-rose-950/30 shadow-rose-500/20 ring-1 ring-rose-500/40' 
+              : 'border-slate-800/90'
+          }`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 shadow-sm border transition-all ${
+                isReverseFeedActive
+                  ? 'bg-rose-600/30 border-rose-500/60 text-rose-400 animate-pulse'
+                  : 'bg-amber-600/20 border-amber-500/30 text-amber-400'
+              }`}>
+                <RotateCcw className={`w-4 h-4 ${isReverseFeedActive ? 'animate-spin' : ''}`} />
               </div>
-              <div className="min-w-0 hidden xl:block">
-                <h3 className="text-xs sm:text-sm font-extrabold text-white tracking-wide truncate">Individual Towers</h3>
-                <p className="text-[11px] text-slate-400 truncate">Control each tower separately</p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-xs sm:text-sm font-extrabold text-white tracking-wide truncate">Reverse Feed</h3>
+                  {isReverseFeedActive && (
+                    <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold bg-rose-500/30 text-rose-300 border border-rose-400/50 rounded-full animate-pulse">
+                      ALERT
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 truncate">Backfeed power current</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto justify-end flex-1">
+            <button
+              onClick={toggleReverseFeed}
+              className={`px-3 py-1.5 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 border transition-all active:scale-95 shrink-0 ${
+                isReverseFeedActive
+                  ? 'bg-rose-900/90 text-rose-200 border-rose-500 shadow-md shadow-rose-500/40 ring-1 ring-rose-400 animate-pulse'
+                  : 'bg-slate-950/80 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-800'
+              }`}
+              title="Toggle Reverse Feed Current on isolated towers"
+            >
+              <Zap className={`w-3.5 h-3.5 ${isReverseFeedActive ? 'text-rose-400 fill-rose-400' : 'text-slate-400'}`} />
+              <span>{isReverseFeedActive ? 'ON' : 'OFF'}</span>
+            </button>
+          </div>
+
+          {/* Panel 4: Individual Towers */}
+          <div className="md:col-span-4 bg-slate-900/75 border border-slate-800/90 rounded-lg px-2.5 py-1.5 flex items-center justify-between gap-2 shadow-md">
+            <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+              <div className="w-7 h-7 rounded-md bg-indigo-600/25 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 shadow-sm">
+                <Radio className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0 hidden lg:block">
+                <h3 className="text-xs font-extrabold text-white tracking-wide truncate">Individual Towers</h3>
+                <p className="text-[9px] text-slate-400 truncate">Control each tower</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 overflow-x-auto justify-end flex-1">
               {sections.map((sec) => {
                 const tId = sec.id;
                 const isThisIsolated = isoList.includes(tId);
                 return (
                   <div
                     key={tId}
-                    className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg bg-slate-950/80 border border-slate-800 shrink-0"
+                    className="flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-slate-950/80 border border-slate-800 min-w-[38px]"
                   >
-                    <span className="text-[11px] font-mono font-black text-slate-300">{tId}</span>
-                    <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800">
-                      <button
-                        onClick={() => turnTowerOn(tId)}
-                        className={`px-2 py-0.5 rounded text-[11px] font-black font-mono tracking-wider transition-all active:scale-95 ${
-                          !isThisIsolated
-                            ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-500/30'
-                            : 'bg-transparent text-slate-400 hover:text-white hover:bg-slate-800'
-                        }`}
-                        title={`Turn Tower ${tId} ON (Energize)`}
-                      >
-                        ON
-                      </button>
-                      <button
-                        onClick={() => turnTowerOff(tId)}
-                        className={`px-2 py-0.5 rounded text-[11px] font-black font-mono tracking-wider transition-all active:scale-95 ${
-                          isThisIsolated
-                            ? 'bg-rose-600 text-white shadow-sm shadow-rose-500/30 ring-1 ring-rose-400'
-                            : 'bg-transparent text-slate-400 hover:text-white hover:bg-slate-800'
-                        }`}
-                        title={`Turn Tower ${tId} OFF (Isolate)`}
-                      >
-                        OFF
-                      </button>
-                    </div>
+                    <span className="text-[9px] font-mono font-extrabold text-slate-300">{tId}</span>
+                    <button
+                      onClick={() => isolateTower(tId)}
+                      className={`px-1.5 py-0.5 rounded-full text-[9px] font-black font-mono tracking-wider transition-all active:scale-95 ${
+                        !isThisIsolated
+                          ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-sm shadow-emerald-500/30'
+                          : 'bg-rose-600 hover:bg-rose-500 text-white shadow-sm shadow-rose-500/30 ring-1 ring-rose-400'
+                      }`}
+                      title={isThisIsolated ? `Tower ${tId} is ISOLATED. Click to restore.` : `Tower ${tId} is ON. Click to isolate.`}
+                    >
+                      {isThisIsolated ? 'OFF' : 'ON'}
+                    </button>
                   </div>
                 );
               })}
@@ -913,25 +961,36 @@ export const GridCanvas: React.FC = () => {
 
         {/* Row 2: Bottom Status Strip */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/70">
-          {/* Left Pill & Hardware Polarity Toggle */}
+          {/* Left Pill */}
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] font-mono font-semibold">
-              <span className={`w-1.5 h-1.5 rounded-full ${isoList.length > 0 ? (isBypassClosed ? 'bg-amber-400 animate-pulse' : 'bg-rose-500 animate-pulse') : 'bg-emerald-400 animate-pulse'}`} />
-              <span className={isoList.length > 0 ? (isBypassClosed ? 'text-amber-300' : 'text-rose-300') : 'text-emerald-300'}>
-                {isoList.length > 0
-                  ? (isBypassClosed ? `Bypass Active (Isolated: ${isoList.join(', ')})` : `Alert: Isolated ${isoList.join(', ')} (Unserved)`)
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                isReverseFeedActive
+                  ? 'bg-rose-500 animate-ping'
+                  : isoList.length > 0
+                  ? isBypassClosed ? 'bg-amber-400 animate-pulse' : 'bg-rose-500 animate-pulse'
+                  : 'bg-emerald-400 animate-pulse'
+              }`} />
+              <span className={
+                isReverseFeedActive
+                  ? 'text-rose-300 font-bold'
+                  : isoList.length > 0
+                  ? isBypassClosed ? 'text-amber-300' : 'text-rose-300'
+                  : 'text-emerald-300'
+              }>
+                {isReverseFeedActive
+                  ? `⚡ REVERSE FEED DETECTED (Current Flowing on ${isoList.length > 0 ? isoList.join(', ') : 'Corridor'})`
+                  : isoList.length > 0
+                  ? isBypassClosed ? `Bypass Active (Isolated: ${isoList.join(', ')})` : `Alert: Isolated ${isoList.join(', ')} (Unserved)`
                   : 'Normal Grid Operation'}
               </span>
             </div>
 
-            <button
-              onClick={() => toggleHardwareLogic('INVERT')}
-              className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-[10px] font-mono font-bold text-slate-300 hover:text-cyan-300 hover:border-cyan-500/50 transition-all active:scale-95"
-              title="Click to toggle GPIO Polarity (Direct Breadboard LEDs vs Active-LOW Relays) on the physical ESP32 prototype"
-            >
-              <Cpu className="w-3 h-3 text-cyan-400" />
-              <span>Invert Hardware LED/Relay Logic</span>
-            </button>
+            {isReverseFeedActive && (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-500/60 text-rose-300 text-[10px] font-mono font-bold animate-pulse">
+                <span>🔊 BUZZER ACTIVE</span>
+              </div>
+            )}
           </div>
 
           {/* Right Tower Status Indicators */}

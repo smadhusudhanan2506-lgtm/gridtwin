@@ -81,21 +81,8 @@ export const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Right: ESP32 Hardware Status, Mode, Helpline, and Profile */}
+      {/* Right: ESP32 Hardware Status, Mode, and Profile */}
       <div className="flex items-center gap-1.5 sm:gap-3">
-        {/* Toll-Free Hotline Helpline Link */}
-        <a
-          href="https://gridtwin-toll-free.onrender.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-500/50 text-indigo-300 hover:bg-indigo-900/80 hover:text-white transition-all text-xs font-mono font-bold shadow-sm shadow-indigo-500/20"
-          title="Open Toll-Free IVR Telephone Helpline & Dialpad (+1 573 859 5176)"
-        >
-          <PhoneCall className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-          <span className="hidden xl:inline">+1 573 859 5176 Helpline</span>
-          <span className="hidden sm:inline xl:hidden">Helpline</span>
-        </a>
-
         {/* Mode Selector Pill */}
         <button
           onClick={() => setHardwareMode(hardwareMode === 'PHYSICAL' ? 'SIMULATION' : 'PHYSICAL')}
@@ -150,6 +137,7 @@ export const Header: React.FC = () => {
             <User className="w-4 h-4 text-white" />
           </div>
           <span className="text-xs sm:text-sm font-bold text-white hidden md:inline tracking-wide">Madhu</span>
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
         </div>
       </div>
     </header>

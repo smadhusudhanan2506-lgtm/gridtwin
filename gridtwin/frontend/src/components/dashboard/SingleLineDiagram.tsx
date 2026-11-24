@@ -29,6 +29,8 @@ export const SingleLineDiagram: React.FC = () => {
     toggleBypassSwitch,
     isolatedTowerId,
     isolatedTowers = [],
+    isReverseFeedActive,
+    toggleReverseFeed,
     isolateTower,
     turnTowerOn,
     turnTowerOff,
@@ -57,11 +59,11 @@ export const SingleLineDiagram: React.FC = () => {
   const mainReachT4 = mainReachT3 && !isT4Iso;
   const mainReachT5 = mainReachT4 && !isT5Iso;
 
-  const t1Live = !isT1Iso && (mainReachT1 || isBypassClosed);
-  const t2Live = !isT2Iso && (mainReachT2 || isBypassClosed);
-  const t3Live = !isT3Iso && (mainReachT3 || isBypassClosed);
-  const t4Live = !isT4Iso && (mainReachT4 || isBypassClosed);
-  const t5Live = !isT5Iso && (mainReachT5 || isBypassClosed);
+  const t1Live = isReverseFeedActive || (!isT1Iso && (mainReachT1 || isBypassClosed));
+  const t2Live = isReverseFeedActive || (!isT2Iso && (mainReachT2 || isBypassClosed));
+  const t3Live = isReverseFeedActive || (!isT3Iso && (mainReachT3 || isBypassClosed));
+  const t4Live = isReverseFeedActive || (!isT4Iso && (mainReachT4 || isBypassClosed));
+  const t5Live = isReverseFeedActive || (!isT5Iso && (mainReachT5 || isBypassClosed));
 
   // Sections perfectly reflecting the 3D Digital Twin model
   const sections = [
@@ -293,8 +295,9 @@ export const SingleLineDiagram: React.FC = () => {
 
           {/* ─────────────────────────────────────────────────────────── */}
           {/* C. VISUAL ISOLATION BLOCK INDICATORS (XX) ON SPANS         */}
+          {/* When Reverse Feed is ON, cross marks are hidden             */}
           {/* ─────────────────────────────────────────────────────────── */}
-          {isT1Iso && (
+          {!isReverseFeedActive && isT1Iso && (
             <g>
               <g transform="translate(136, 110)">
                 <rect x="-16" y="-12" width="32" height="24" rx="4" fill="#070e24" stroke="#ef4444" strokeWidth="1.5" />
@@ -307,7 +310,7 @@ export const SingleLineDiagram: React.FC = () => {
             </g>
           )}
 
-          {isT2Iso && (
+          {!isReverseFeedActive && isT2Iso && (
             <g>
               <g transform="translate(242, 110)">
                 <rect x="-16" y="-12" width="32" height="24" rx="4" fill="#070e24" stroke="#ef4444" strokeWidth="1.5" />
@@ -320,7 +323,7 @@ export const SingleLineDiagram: React.FC = () => {
             </g>
           )}
 
-          {isT3Iso && (
+          {!isReverseFeedActive && isT3Iso && (
             <g>
               <g transform="translate(397, 110)">
                 <rect x="-16" y="-12" width="32" height="24" rx="4" fill="#070e24" stroke="#ef4444" strokeWidth="1.5" />
@@ -333,7 +336,7 @@ export const SingleLineDiagram: React.FC = () => {
             </g>
           )}
 
-          {isT4Iso && (
+          {!isReverseFeedActive && isT4Iso && (
             <g>
               <g transform="translate(552, 110)">
                 <rect x="-16" y="-12" width="32" height="24" rx="4" fill="#070e24" stroke="#ef4444" strokeWidth="1.5" />
@@ -346,7 +349,7 @@ export const SingleLineDiagram: React.FC = () => {
             </g>
           )}
 
-          {isT5Iso && (
+          {!isReverseFeedActive && isT5Iso && (
             <g>
               <g transform="translate(707, 110)">
                 <rect x="-16" y="-12" width="32" height="24" rx="4" fill="#070e24" stroke="#ef4444" strokeWidth="1.5" />
@@ -359,8 +362,8 @@ export const SingleLineDiagram: React.FC = () => {
           {/* D. FIVE TRANSMISSION TOWERS T1 TO T5 & CONSUMER BRANCHES    */}
           {/* ─────────────────────────────────────────────────────────── */}
           {sections.map((sec) => {
-            const towerColor = sec.isIso ? '#fbbf24' : sec.isLive ? '#0ea5e9' : '#64748b';
-            const statusTextColor = sec.isIso ? '#f59e0b' : sec.isLive ? '#10b981' : '#94a3b8';
+            const towerColor = sec.isIso ? '#ef4444' : sec.isLive ? '#0ea5e9' : '#64748b';
+            const statusTextColor = sec.isIso ? '#ef4444' : sec.isLive ? '#10b981' : '#94a3b8';
 
             return (
               <g key={sec.id}>
@@ -599,115 +602,143 @@ export const SingleLineDiagram: React.FC = () => {
         </svg>
       </div>
 
-      {/* 3. MODERN MODULAR THREE-PANEL CONTROL CONSOLE (IDENTICAL TO 3D LAB) */}
+      {/* 3. MODERN MODULAR FOUR-PANEL CONTROL CONSOLE (IDENTICAL TO 3D LAB) */}
       <div className="bg-[#0b132b]/95 border border-slate-800/90 rounded-2xl p-3 shadow-2xl flex flex-col gap-2.5 shrink-0 select-none">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-stretch">
 
           {/* Panel 1: Grid Master */}
-          <div className="md:col-span-4 bg-slate-900/75 border border-slate-800/90 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3 shadow-md">
-            <div className="flex items-center gap-2.5 min-w-0">
+          <div className="md:col-span-3 bg-slate-900/75 border border-slate-800/90 rounded-xl px-3 py-2 flex items-center justify-between gap-2 shadow-md">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-blue-600/25 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0 shadow-sm">
                 <FileText className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <h3 className="text-xs md:text-sm font-extrabold text-white tracking-wide truncate">Grid Master</h3>
-                <p className="text-xs text-slate-400 truncate">Control all towers together</p>
+                <p className="text-[10px] text-slate-400 truncate">Control all towers</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={turnAllTowersOn}
-                className="px-4 py-2 rounded-full text-xs sm:text-sm font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center gap-1.5 shadow-md shadow-emerald-500/25 transition-all active:scale-95"
+                className="px-2.5 py-1.5 rounded-full text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center gap-1 shadow-md shadow-emerald-500/25 transition-all active:scale-95"
                 title="Energize ALL 5 towers (Powers relays and turns ON all tower LEDs)"
               >
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>ALL ON</span>
               </button>
 
               <button
                 onClick={turnAllTowersOff}
-                className="px-4 py-2 rounded-full text-xs sm:text-sm font-black bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+                className="px-2.5 py-1.5 rounded-full text-xs font-black bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1 shadow-sm transition-all active:scale-95"
                 title="Isolate / Turn OFF ALL 5 towers"
               >
-                <Power className="w-4 h-4 text-slate-400" />
+                <Power className="w-3.5 h-3.5 text-slate-400" />
                 <span>ALL OFF</span>
               </button>
             </div>
           </div>
 
           {/* Panel 2: Bypass Bus */}
-          <div className="md:col-span-3 bg-slate-900/75 border border-slate-800/90 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3 shadow-md">
-            <div className="flex items-center gap-2.5 min-w-0">
+          <div className="md:col-span-2 bg-slate-900/75 border border-slate-800/90 rounded-xl px-2.5 py-2 flex items-center justify-between gap-2 shadow-md">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 rounded-lg bg-cyan-600/25 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0 shadow-sm">
                 <ArrowLeftRight className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <h3 className="text-xs md:text-sm font-extrabold text-white tracking-wide truncate">Bypass Bus</h3>
-                <p className="text-xs text-slate-400 truncate">Open / Close bypass line</p>
+                <p className="text-[10px] text-slate-400 truncate">Bypass line</p>
               </div>
             </div>
 
             <button
               onClick={toggleBypassSwitch}
-              className={`px-4 py-2 rounded-full text-xs sm:text-sm font-mono font-bold flex items-center gap-2 border transition-all active:scale-95 shrink-0 ${
+              className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold flex items-center gap-1 border transition-all active:scale-95 shrink-0 ${
                 isBypassClosed
                   ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/70 shadow-sm shadow-emerald-500/20'
                   : 'bg-cyan-950/40 text-cyan-300 border-cyan-500/60 hover:bg-cyan-900/50'
               }`}
               title="Toggle Front Bypass Bus State"
             >
-              <Circle className="w-2.5 h-2.5 text-cyan-400 fill-cyan-400" />
+              <Circle className="w-2 h-2 text-cyan-400 fill-cyan-400" />
               <span>{bypassSwitchState}</span>
             </button>
           </div>
 
-          {/* Panel 3: Individual Towers */}
-          <div className="md:col-span-5 bg-slate-900/75 border border-slate-800/90 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3 shadow-md">
-            <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600/25 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 shadow-sm">
-                <Radio className="w-4 h-4" />
+          {/* Panel 3: Reverse Feed */}
+          <div className={`md:col-span-3 bg-slate-900/75 border rounded-xl px-3 py-2 flex items-center justify-between gap-2 shadow-md transition-all ${
+            isReverseFeedActive 
+              ? 'border-rose-500/80 bg-rose-950/30 shadow-rose-500/20 ring-1 ring-rose-500/40' 
+              : 'border-slate-800/90'
+          }`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm border transition-all ${
+                isReverseFeedActive
+                  ? 'bg-rose-600/30 border-rose-500/60 text-rose-400 animate-pulse'
+                  : 'bg-amber-600/20 border-amber-500/30 text-amber-400'
+              }`}>
+                <RotateCcw className={`w-4 h-4 ${isReverseFeedActive ? 'animate-spin' : ''}`} />
               </div>
-              <div className="min-w-0 hidden xl:block">
-                <h3 className="text-xs md:text-sm font-extrabold text-white tracking-wide truncate">Individual Towers</h3>
-                <p className="text-xs text-slate-400 truncate">Control each tower separately</p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-xs md:text-sm font-extrabold text-white tracking-wide truncate">Reverse Feed</h3>
+                  {isReverseFeedActive && (
+                    <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold bg-rose-500/30 text-rose-300 border border-rose-400/50 rounded-full animate-pulse">
+                      ALERT
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400 truncate">Backfeed power current</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto justify-end flex-1">
+            <button
+              onClick={toggleReverseFeed}
+              className={`px-3 py-1.5 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 border transition-all active:scale-95 shrink-0 ${
+                isReverseFeedActive
+                  ? 'bg-rose-900/90 text-rose-200 border-rose-500 shadow-md shadow-rose-500/40 ring-1 ring-rose-400 animate-pulse'
+                  : 'bg-slate-950/80 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-800'
+              }`}
+              title="Toggle Reverse Feed Current on isolated towers"
+            >
+              <Zap className={`w-3.5 h-3.5 ${isReverseFeedActive ? 'text-rose-400 fill-rose-400' : 'text-slate-400'}`} />
+              <span>{isReverseFeedActive ? 'ON' : 'OFF'}</span>
+            </button>
+          </div>
+
+          {/* Panel 4: Individual Towers */}
+          <div className="md:col-span-4 bg-slate-900/75 border border-slate-800/90 rounded-xl px-2.5 py-1.5 flex items-center justify-between gap-2 shadow-md">
+            <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-indigo-600/25 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0 shadow-sm">
+                <Radio className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0 hidden lg:block">
+                <h3 className="text-xs font-extrabold text-white tracking-wide truncate">Individual Towers</h3>
+                <p className="text-[9px] text-slate-400 truncate">Control each tower</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 overflow-x-auto justify-end flex-1">
               {sections.map((sec) => {
                 const tId = sec.id;
                 const isThisIsolated = isoList.includes(tId);
                 return (
                   <div
                     key={tId}
-                    className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg bg-slate-950/80 border border-slate-800 shrink-0"
+                    className="flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-slate-950/80 border border-slate-800 min-w-[38px]"
                   >
-                    <span className="text-xs font-mono font-black text-slate-300">{tId}</span>
-                    <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800">
-                      <button
-                        onClick={() => turnTowerOn(tId)}
-                        className={`px-2 py-0.5 rounded text-xs font-black font-mono tracking-wider transition-all active:scale-95 ${
-                          !isThisIsolated
-                            ? 'bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-500/30'
-                            : 'bg-transparent text-slate-400 hover:text-white hover:bg-slate-800'
-                        }`}
-                        title={`Turn Tower ${tId} ON (Energize)`}
-                      >
-                        ON
-                      </button>
-                      <button
-                        onClick={() => turnTowerOff(tId)}
-                        className={`px-2 py-0.5 rounded text-xs font-black font-mono tracking-wider transition-all active:scale-95 ${
-                          isThisIsolated
-                            ? 'bg-rose-600 text-white shadow-sm shadow-rose-500/30 ring-1 ring-rose-400'
-                            : 'bg-transparent text-slate-400 hover:text-white hover:bg-slate-800'
-                        }`}
-                        title={`Turn Tower ${tId} OFF (Isolate)`}
-                      >
-                        OFF
-                      </button>
-                    </div>
+                    <span className="text-[9px] font-mono font-extrabold text-slate-300">{tId}</span>
+                    <button
+                      onClick={() => isolateTower(tId)}
+                      className={`px-1.5 py-0.5 rounded-full text-[9px] font-black font-mono tracking-wider transition-all active:scale-95 ${
+                        !isThisIsolated
+                          ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-sm shadow-emerald-500/30'
+                          : 'bg-rose-600 hover:bg-rose-500 text-white shadow-sm shadow-rose-500/30 ring-1 ring-rose-400'
+                      }`}
+                      title={isThisIsolated ? `Tower ${tId} is ISOLATED. Click to restore.` : `Tower ${tId} is ON. Click to isolate.`}
+                    >
+                      {isThisIsolated ? 'OFF' : 'ON'}
+                    </button>
                   </div>
                 );
               })}
@@ -717,13 +748,35 @@ export const SingleLineDiagram: React.FC = () => {
 
         {/* Bottom Status Strip */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-slate-800/70">
-          <div className="flex items-center gap-2 px-3 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-xs md:text-sm font-mono font-semibold">
-            <span className={`w-2.5 h-2.5 rounded-full ${isoList.length > 0 ? (isBypassClosed ? 'bg-amber-400 animate-pulse' : 'bg-rose-500 animate-pulse') : 'bg-emerald-400 animate-pulse'}`} />
-            <span className={isoList.length > 0 ? (isBypassClosed ? 'text-amber-300' : 'text-rose-300') : 'text-emerald-300'}>
-              {isoList.length > 0
-                ? (isBypassClosed ? `Bypass Active (Isolated: ${isoList.join(', ')})` : `Alert: Isolated ${isoList.join(', ')} (Unserved)`)
-                : 'Normal Grid Operation'}
-            </span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-3 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-xs md:text-sm font-mono font-semibold">
+              <span className={`w-2.5 h-2.5 rounded-full ${
+                isReverseFeedActive
+                  ? 'bg-rose-500 animate-ping'
+                  : isoList.length > 0
+                  ? isBypassClosed ? 'bg-amber-400 animate-pulse' : 'bg-rose-500 animate-pulse'
+                  : 'bg-emerald-400 animate-pulse'
+              }`} />
+              <span className={
+                isReverseFeedActive
+                  ? 'text-rose-300 font-bold'
+                  : isoList.length > 0
+                  ? isBypassClosed ? 'text-amber-300' : 'text-rose-300'
+                  : 'text-emerald-300'
+              }>
+                {isReverseFeedActive
+                  ? `⚡ REVERSE FEED DETECTED (Current Flowing on ${isoList.length > 0 ? isoList.join(', ') : 'Corridor'})`
+                  : isoList.length > 0
+                  ? isBypassClosed ? `Bypass Active (Isolated: ${isoList.join(', ')})` : `Alert: Isolated ${isoList.join(', ')} (Unserved)`
+                  : 'Normal Grid Operation'}
+              </span>
+            </div>
+
+            {isReverseFeedActive && (
+              <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-950/80 border border-rose-500/60 text-rose-300 text-xs font-mono font-bold animate-pulse">
+                <span>🔊 BUZZER ACTIVE</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3.5 text-xs md:text-sm font-mono">
