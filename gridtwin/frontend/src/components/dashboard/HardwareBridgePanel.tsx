@@ -29,6 +29,7 @@ export const HardwareBridgePanel: React.FC = () => {
     sendHardwareIsolateCommand,
     sendHardwareRestoreCommand,
     sendHardwareSetAllCommand,
+    toggleHardwareLogic,
     fetchHardwareStatus,
     isUsbConnected,
     connectUsbSerial,
@@ -351,6 +352,16 @@ export const HardwareBridgePanel: React.FC = () => {
             className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-2 transition-all disabled:opacity-40"
           >
             All Towers OFF
+          </button>
+
+          <button
+            onClick={() => toggleHardwareLogic('INVERT')}
+            disabled={!isOnline && hardwareMode === 'PHYSICAL'}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 flex items-center gap-2 transition-all disabled:opacity-40"
+            title="Invert Relay Logic if LEDs are ON when isolated or OFF when restored"
+          >
+            <Sliders className="w-4 h-4 text-purple-400" />
+            Invert Polarity (Active-LOW ↔ Active-HIGH)
           </button>
         </div>
       </div>

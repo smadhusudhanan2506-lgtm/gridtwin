@@ -3,25 +3,47 @@
  * GRIDTWIN - ESP32 SMART GRID PHYSICAL DIGITAL TWIN FIRMWARE
  * ═══════════════════════════════════════════════════════════════════════
  * 
- * Hardware Architecture:
+ * Hardware Architecture & Verified Pinout:
  * - ESP32 DevKit V1 (30-pin or 38-pin)
  * - 8-Channel 5V Optoisolated Relay Board (Active-LOW, JD-VCC jumper)
  * - INA219 I2C High-Side DC Voltage & Current Sensor (Address 0x40)
  * - 5x Transmission Tower Physical LEDs (T1, T2, T3, T4, T5)
  * 
- * Pinout Assignment:
- * - Tower 1 (T1) -> GPIO 13 -> Relay IN1
- * - Tower 2 (T2) -> GPIO 14 -> Relay IN2
- * - Tower 3 (T3) -> GPIO 25 -> Relay IN3 (Fault & Isolation target)
- * - Tower 4 (T4) -> GPIO 26 -> Relay IN4
- * - Tower 5 (T5) -> GPIO 27 -> Relay IN5
- * - Channel 6    -> GPIO 32 -> Relay IN6 (Reserved Front Bypass)
- * - INA219 SDA   -> GPIO 21
- * - INA219 SCL   -> GPIO 22
+ * Verified Wiring Connections:
+ * ─────────────────────────────────────────────────────────────────────
+ * 1. ESP32 to Relay Board Inputs:
+ *    - GPIO 13 -> Relay IN1 (Tower 1 LED)
+ *    - GPIO 14 -> Relay IN2 (Tower 2 LED)
+ *    - GPIO 25 -> Relay IN3 (Tower 3 LED - Isolation Target)
+ *    - GPIO 26 -> Relay IN4 (Tower 4 LED)
+ *    - GPIO 27 -> Relay IN5 (Tower 5 LED)
+ *    - GPIO 32 -> Relay IN6 (Reserved Bypass Path)
+ * 
+ * 2. ESP32 to INA219 I2C Sensor:
+ *    - ESP32 3V3 -> INA VCC
+ *    - ESP32 GND -> INA GND
+ *    - GPIO 21   -> INA SDA
+ *    - GPIO 22   -> INA SCL
+ * 
+ * 3. Power Supply (5V Adapter) & Relay Power Circuit:
+ *    - 5V Adapter (+) -> INA219 VIN+
+ *    - INA219 VIN-   -> Common rail to ALL Relay COM terminals (1, 2, 3, 4, 5)
+ *    - 5V Adapter (+) -> Relay Board VCC (or JD-VCC)
+ *    - 5V Adapter (-) -> Relay Board GND
+ *    - ⚠️ IMPORTANT COMMON GROUND: Connect ESP32 GND to 5V Adapter (-)
+ *      (Ensures control signal return path and accurate INA219 voltage reading)
+ * 
+ * 4. Relays to Tower LEDs:
+ *    - Relay 1 NO -> Resistor -> LED Anode (Long leg) -> LED Cathode (Short leg) -> 5V Adapter (-)
+ *    - Relay 2 NO -> Resistor -> LED Anode (Long leg) -> LED Cathode (Short leg) -> 5V Adapter (-)
+ *    - Relay 3 NO -> Resistor -> LED Anode (Long leg) -> LED Cathode (Short leg) -> 5V Adapter (-)
+ *    - Relay 4 NO -> Resistor -> LED Anode (Long leg) -> LED Cathode (Short leg) -> 5V Adapter (-)
+ *    - Relay 5 NO -> Resistor -> LED Anode (Long leg) -> LED Cathode (Short leg) -> 5V Adapter (-)
+ *    (Note: On standard LEDs, Long Leg = Anode [+], Short Leg = Cathode [-])
  * 
  * Connection Modes:
- * 1. USB DIRECT (Web Serial API): Plug USB cable into computer, click "Connect USB" in Chrome.
- * 2. CLOUD WI-FI (MQTT): Connects to broker.hivemq.com or your local MQTT broker.
+ * 1. USB DIRECT (Web Serial API): Plug USB cable into PC, click "Connect USB" in Chrome.
+ * 2. CLOUD WI-FI (MQTT): Connects to broker.hivemq.com (Zero-config, global sync).
  * ═══════════════════════════════════════════════════════════════════════
  */
 
@@ -47,7 +69,7 @@ const char* MQTT_PASSWORD_STR = "";
 
 // Device Identification
 const char* DEVICE_ID         = "esp32-gridtwin-001";
-const char* FIRMWARE_VERSION  = "2.5.0-usb-wifi-sync";
+const char* FIRMWARE_VERSION  = "2.6.0-direct-sync";
 const char* SCHEMA_VERSION    = "1.0";
 
 // ─────────────────────────────────────────────────────────────────────
@@ -66,9 +88,9 @@ const char* SCHEMA_VERSION    = "1.0";
 #define NUM_OUTPUTS 5
 
 // Relay Logic: Most 8-channel optoisolated modules are Active-LOW (JD-VCC jumper)
+// When true: LOW = Energized (LED ON), HIGH/INPUT = De-energized (LED OFF)
+// When false: HIGH = Energized (LED ON), LOW = De-energized (LED OFF)
 bool RELAY_ACTIVE_LOW = true;
-#define RELAY_STATE_ON  (RELAY_ACTIVE_LOW ? LOW : HIGH)
-#define RELAY_STATE_OFF (RELAY_ACTIVE_LOW ? HIGH : LOW)
 
 // Timing Constants (milliseconds)
 const unsigned long HEARTBEAT_INTERVAL_MS      = 10000; // 10s
@@ -128,6 +150,8 @@ void handleCommand(JsonDocument& doc);
 void handleSerialChar(char ch);
 void handleSerialLine(String line);
 void setRelayHardware(int idx, bool targetState);
+void updateAllPins();
+void printHardwareStatus();
 int findOutputIndex(const char* output_id);
 void publishHeartbeat();
 void publishTelemetry();
@@ -145,8 +169,10 @@ void setup() {
   Serial.println("\n╔══════════════════════════════════════════════════════╗");
   Serial.println("║         GRIDTWIN ESP32 HARDWARE INTEGRATION          ║");
   Serial.println("║      Dual USB Web Serial + Cloud MQTT Controller     ║");
+  Serial.println("║   Deterministic Tower Isolation & INA219 Telemetry   ║");
   Serial.println("╚══════════════════════════════════════════════════════╝");
   Serial.printf("[INIT] Device ID: %s\n", DEVICE_ID);
+  Serial.printf("[INIT] Firmware Version: %s\n", FIRMWARE_VERSION);
 
   buildTopics();
   setupOutputs();
@@ -178,10 +204,8 @@ void loop() {
       }
     } else {
       serialBuffer += ch;
-      // Single-character commands for fast control
-      if (serialBuffer.length() == 1 && (ch >= '0' && ch <= '9' || ch == 'i' || ch == 't')) {
-        handleSerialChar(ch);
-        serialBuffer = "";
+      if (serialBuffer.length() > 256) {
+        serialBuffer = ""; // Prevent buffer overflow
       }
     }
   }
@@ -217,14 +241,15 @@ void loop() {
       if (c < 0) c = 0.0;
     }
 
-    // Single-line JSON emitted to USB Serial
-    Serial.printf("{\"status\":\"ONLINE\",\"device_id\":\"%s\",\"bus_voltage_v\":%.2f,\"current_ma\":%.1f,\"output_states\":{\"T1\":\"%s\",\"T2\":\"%s\",\"T3\":\"%s\",\"T4\":\"%s\",\"T5\":\"%s\"}}\n",
+    // Single-line JSON emitted to USB Serial for the frontend
+    Serial.printf("{\"status\":\"ONLINE\",\"device_id\":\"%s\",\"bus_voltage_v\":%.2f,\"current_ma\":%.1f,\"output_states\":{\"T1\":\"%s\",\"T2\":\"%s\",\"T3\":\"%s\",\"T4\":\"%s\",\"T5\":\"%s\"},\"logic\":\"%s\"}\n",
       DEVICE_ID, v, c,
       outputs[0].current_state ? "ON" : "OFF",
       outputs[1].current_state ? "ON" : "OFF",
       outputs[2].current_state ? "ON" : "OFF",
       outputs[3].current_state ? "ON" : "OFF",
-      outputs[4].current_state ? "ON" : "OFF"
+      outputs[4].current_state ? "ON" : "OFF",
+      RELAY_ACTIVE_LOW ? "ACTIVE_LOW" : "ACTIVE_HIGH"
     );
   }
 
@@ -244,20 +269,86 @@ void loop() {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// 7. GPIO OUTPUT SETUP
+// 7. GPIO OUTPUT SETUP & RELAY DRIVING
 // ─────────────────────────────────────────────────────────────────────
 void setupOutputs() {
   Serial.println("[GPIO] Initializing 5-Tower Relay Pins...");
   for (int i = 0; i < NUM_OUTPUTS; i++) {
-    pinMode(outputs[i].gpio_pin, OUTPUT);
-    digitalWrite(outputs[i].gpio_pin, RELAY_STATE_ON); // Initial State: All Towers ON
-    outputs[i].current_state = true;
+    outputs[i].current_state = true; // All towers energized initially
+    setRelayHardware(i, true);
     Serial.printf("[GPIO] Tower %s -> GPIO %d [ON]\n", outputs[i].output_id, outputs[i].gpio_pin);
   }
 
   pinMode(RELAY_6_PIN, OUTPUT);
-  digitalWrite(RELAY_6_PIN, RELAY_STATE_OFF);
+  if (RELAY_ACTIVE_LOW) {
+    pinMode(RELAY_6_PIN, INPUT);
+    digitalWrite(RELAY_6_PIN, HIGH);
+  } else {
+    digitalWrite(RELAY_6_PIN, LOW);
+  }
   Serial.printf("[GPIO] Bypass Ch 6 -> GPIO %d [STANDBY]\n", RELAY_6_PIN);
+}
+
+/**
+ * Robust Hardware Driving Function:
+ * Handles 5V Optocoupled Relay modules driven by 3.3V ESP32 GPIOs.
+ * 
+ * For Active-LOW:
+ * - ON: pinMode OUTPUT, digitalWrite LOW (sinks current to GND -> relay energizes -> LED ON)
+ * - OFF: pinMode INPUT, digitalWrite HIGH (high-Z floating mode -> 0mA leakage from 5V -> relay de-energizes -> LED OFF)
+ * 
+ * For Active-HIGH:
+ * - ON: pinMode OUTPUT, digitalWrite HIGH
+ * - OFF: pinMode OUTPUT, digitalWrite LOW
+ */
+void setRelayHardware(int idx, bool targetState) {
+  if (idx < 0 || idx >= NUM_OUTPUTS) return;
+  int pin = outputs[idx].gpio_pin;
+
+  if (RELAY_ACTIVE_LOW) {
+    if (targetState) {
+      // Energize: Pull LOW to sink current to GND
+      pinMode(pin, OUTPUT);
+      digitalWrite(pin, LOW);
+    } else {
+      // De-energize: Floating INPUT stops any 5V-to-3.3V leakage through optocoupler
+      pinMode(pin, INPUT);
+      digitalWrite(pin, HIGH);
+    }
+  } else {
+    // Active-HIGH mode
+    pinMode(pin, OUTPUT);
+    digitalWrite(pin, targetState ? HIGH : LOW);
+  }
+
+  outputs[idx].current_state = targetState;
+
+  Serial.printf("[HARDWARE] %s (GPIO %d) -> %s [Relay %s]\n",
+    outputs[idx].output_id, pin, targetState ? "ON" : "OFF", targetState ? "ENERGIZED" : "DE-ENERGIZED");
+
+  if (mqttClient.connected()) {
+    publishHeartbeat();
+  }
+}
+
+void updateAllPins() {
+  for (int i = 0; i < NUM_OUTPUTS; i++) {
+    setRelayHardware(i, outputs[i].current_state);
+  }
+}
+
+void printHardwareStatus() {
+  Serial.println("\n─── [HARDWARE STATUS REPORT] ───");
+  Serial.printf("Relay Logic Mode: %s\n", RELAY_ACTIVE_LOW ? "Active-LOW (JD-VCC)" : "Active-HIGH");
+  for (int i = 0; i < NUM_OUTPUTS; i++) {
+    Serial.printf("  %s (GPIO %d): %s\n", outputs[i].output_id, outputs[i].gpio_pin, outputs[i].current_state ? "ON (Energized)" : "OFF (Isolated)");
+  }
+  if (ina219Connected) {
+    Serial.printf("  INA219: %.2f V, %.1f mA\n", ina219.getBusVoltage_V(), ina219.getCurrent_mA());
+  } else {
+    Serial.println("  INA219: Not detected (Simulated 5.0V / 145mA)");
+  }
+  Serial.println("────────────────────────────────\n");
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -277,65 +368,117 @@ void setupIna219() {
 // ─────────────────────────────────────────────────────────────────────
 // 9. SERIAL COMMAND DISPATCHER (FOR WEB SERIAL IN CHROME)
 // ─────────────────────────────────────────────────────────────────────
-void handleSerialChar(char ch) {
-  if (ch >= '1' && ch <= '5') {
-    int idx = ch - '1';
-    setRelayHardware(idx, !outputs[idx].current_state);
-  } else if (ch == '0') {
-    Serial.println("[CMD] De-energizing ALL Towers (ALL_OFF)...");
-    for (int i = 0; i < NUM_OUTPUTS; i++) setRelayHardware(i, false);
-  } else if (ch == '9') {
-    Serial.println("[CMD] Energizing ALL Towers (ALL_ON)...");
-    for (int i = 0; i < NUM_OUTPUTS; i++) setRelayHardware(i, true);
-  } else if (ch == 'i' || ch == 'I') {
-    RELAY_ACTIVE_LOW = !RELAY_ACTIVE_LOW;
-    Serial.printf("[CONFIG] Inverted relay logic: %s\n", RELAY_ACTIVE_LOW ? "Active-LOW" : "Active-HIGH");
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-      int pinVal = outputs[i].current_state ? RELAY_STATE_ON : RELAY_STATE_OFF;
-      digitalWrite(outputs[i].gpio_pin, pinVal);
-    }
-  } else if (ch == 't' || ch == 'T') {
-    Serial.println("[TEST] Running sequential test...");
-    for (int i = 0; i < NUM_OUTPUTS; i++) { setRelayHardware(i, false); delay(250); }
-    for (int i = 0; i < NUM_OUTPUTS; i++) { setRelayHardware(i, true); delay(250); }
-  }
-}
-
 void handleSerialLine(String line) {
   line.trim();
+  if (line.length() == 0) return;
+
+  // 1. JSON Command Support (from Web Serial or test script)
   if (line.startsWith("{")) {
     StaticJsonDocument<512> doc;
     DeserializationError err = deserializeJson(doc, line);
     if (!err) {
       handleCommand(doc);
     }
+    return;
+  }
+
+  // 2. Direct Explicit Text Commands (Unambiguous, Case-Insensitive)
+  String upper = line;
+  upper.toUpperCase();
+
+  // Tower 1
+  if (upper == "T1:OFF" || upper == "T1:0" || upper == "ISOLATE:T1" || upper == "ISOLATE T1" || upper == "T1 OFF") {
+    setRelayHardware(0, false);
+  } else if (upper == "T1:ON" || upper == "T1:1" || upper == "RESTORE:T1" || upper == "RESTORE T1" || upper == "T1 ON") {
+    setRelayHardware(0, true);
+
+  // Tower 2
+  } else if (upper == "T2:OFF" || upper == "T2:0" || upper == "ISOLATE:T2" || upper == "ISOLATE T2" || upper == "T2 OFF") {
+    setRelayHardware(1, false);
+  } else if (upper == "T2:ON" || upper == "T2:1" || upper == "RESTORE:T2" || upper == "RESTORE T2" || upper == "T2 ON") {
+    setRelayHardware(1, true);
+
+  // Tower 3
+  } else if (upper == "T3:OFF" || upper == "T3:0" || upper == "ISOLATE:T3" || upper == "ISOLATE T3" || upper == "T3 OFF") {
+    setRelayHardware(2, false);
+  } else if (upper == "T3:ON" || upper == "T3:1" || upper == "RESTORE:T3" || upper == "RESTORE T3" || upper == "T3 ON") {
+    setRelayHardware(2, true);
+
+  // Tower 4
+  } else if (upper == "T4:OFF" || upper == "T4:0" || upper == "ISOLATE:T4" || upper == "ISOLATE T4" || upper == "T4 OFF") {
+    setRelayHardware(3, false);
+  } else if (upper == "T4:ON" || upper == "T4:1" || upper == "RESTORE:T4" || upper == "RESTORE T4" || upper == "T4 ON") {
+    setRelayHardware(3, true);
+
+  // Tower 5
+  } else if (upper == "T5:OFF" || upper == "T5:0" || upper == "ISOLATE:T5" || upper == "ISOLATE T5" || upper == "T5 OFF") {
+    setRelayHardware(4, false);
+  } else if (upper == "T5:ON" || upper == "T5:1" || upper == "RESTORE:T5" || upper == "RESTORE T5" || upper == "T5 ON") {
+    setRelayHardware(4, true);
+
+  // Batch All Commands
+  } else if (upper == "ALL:OFF" || upper == "ALL:0" || upper == "ALL OFF") {
+    Serial.println("[CMD] De-energizing ALL Towers (ALL_OFF)...");
+    for (int i = 0; i < NUM_OUTPUTS; i++) setRelayHardware(i, false);
+  } else if (upper == "ALL:ON" || upper == "ALL:1" || upper == "ALL ON") {
+    Serial.println("[CMD] Energizing ALL Towers (ALL_ON)...");
+    for (int i = 0; i < NUM_OUTPUTS; i++) setRelayHardware(i, true);
+
+  // Invert Relay Polarity
+  } else if (upper == "INVERT") {
+    RELAY_ACTIVE_LOW = !RELAY_ACTIVE_LOW;
+    Serial.printf("[CONFIG] Inverted relay logic: %s\n", RELAY_ACTIVE_LOW ? "Active-LOW (JD-VCC)" : "Active-HIGH");
+    updateAllPins();
+
+  // Status Report
+  } else if (upper == "STATUS" || upper == "INFO") {
+    printHardwareStatus();
+
+  // Single-character shorthand fallback
+  } else if (upper.length() == 1) {
+    handleSerialChar(upper.charAt(0));
   }
 }
 
-void setRelayHardware(int idx, bool targetState) {
-  if (idx < 0 || idx >= NUM_OUTPUTS) return;
-  int pin = outputs[idx].gpio_pin;
-  int pinVal = targetState ? RELAY_STATE_ON : RELAY_STATE_OFF;
-  digitalWrite(pin, pinVal);
-  outputs[idx].current_state = targetState;
-
-  Serial.printf("[HARDWARE] %s (GPIO %d) -> %s\n",
-    outputs[idx].output_id, pin, targetState ? "ON" : "OFF");
-
-  if (mqttClient.connected()) {
-    publishHeartbeat();
+void handleSerialChar(char ch) {
+  if (ch >= '1' && ch <= '5') {
+    int idx = ch - '1';
+    // Toggle specified tower
+    setRelayHardware(idx, !outputs[idx].current_state);
+  } else if (ch == '0') {
+    for (int i = 0; i < NUM_OUTPUTS; i++) setRelayHardware(i, false);
+  } else if (ch == '9') {
+    for (int i = 0; i < NUM_OUTPUTS; i++) setRelayHardware(i, true);
+  } else if (ch == 'i' || ch == 'I') {
+    RELAY_ACTIVE_LOW = !RELAY_ACTIVE_LOW;
+    Serial.printf("[CONFIG] Inverted relay logic: %s\n", RELAY_ACTIVE_LOW ? "Active-LOW" : "Active-HIGH");
+    updateAllPins();
+  } else if (ch == 't' || ch == 'T') {
+    Serial.println("[TEST] Running sequential test cycle...");
+    for (int i = 0; i < NUM_OUTPUTS; i++) { setRelayHardware(i, false); delay(250); }
+    for (int i = 0; i < NUM_OUTPUTS; i++) { setRelayHardware(i, true); delay(250); }
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// 10. MQTT COMMAND PARSER
+// 10. MQTT & JSON COMMAND PARSER
 // ─────────────────────────────────────────────────────────────────────
 void handleCommand(JsonDocument& doc) {
-  const char* command_id     = doc["command_id"];
-  const char* output_id      = doc["output_id"];
+  const char* command_id      = doc["command_id"];
+  const char* output_id       = doc["output_id"];
   const char* requested_state = doc["requested_state"];
-  const char* action         = doc["action"];
+  const char* action          = doc["action"];
 
+  // Invert Logic Command
+  if (action && (String(action) == "INVERT" || String(action) == "TOGGLE_LOGIC")) {
+    RELAY_ACTIVE_LOW = !RELAY_ACTIVE_LOW;
+    Serial.printf("[CONFIG] Inverted relay logic: %s\n", RELAY_ACTIVE_LOW ? "Active-LOW" : "Active-HIGH");
+    updateAllPins();
+    if (command_id) publishAck(command_id, "ALL", true, RELAY_ACTIVE_LOW ? "ACTIVE_LOW" : "ACTIVE_HIGH", NULL);
+    return;
+  }
+
+  // Batch ALL Commands
   if (action && String(action) == "ALL_ON") {
     for (int i = 0; i < NUM_OUTPUTS; i++) setRelayHardware(i, true);
     if (command_id) publishAck(command_id, "ALL", true, "ON", NULL);
@@ -346,14 +489,18 @@ void handleCommand(JsonDocument& doc) {
     if (command_id) publishAck(command_id, "ALL", true, "OFF", NULL);
     return;
   }
+
+  // Deterministic ISOLATE Command -> Explicitly Turn OFF
   if (action && String(action) == "ISOLATE" && output_id) {
     int idx = findOutputIndex(output_id);
     if (idx >= 0) {
       setRelayHardware(idx, false);
-      if (command_id) publishAck(command_id, output_id, true, "ISOLATED", NULL);
+      if (command_id) publishAck(command_id, output_id, true, "OFF", NULL);
     }
     return;
   }
+
+  // Deterministic RESTORE Command -> Explicitly Turn ON
   if (action && String(action) == "RESTORE" && output_id) {
     int idx = findOutputIndex(output_id);
     if (idx >= 0) {
@@ -362,10 +509,12 @@ void handleCommand(JsonDocument& doc) {
     }
     return;
   }
+
+  // Direct requested_state (ON / OFF)
   if (output_id && requested_state) {
     int idx = findOutputIndex(output_id);
     if (idx >= 0) {
-      bool target = (String(requested_state) == "ON");
+      bool target = (String(requested_state) == "ON" || String(requested_state) == "RESTORE");
       setRelayHardware(idx, target);
       if (command_id) publishAck(command_id, output_id, true, target ? "ON" : "OFF", NULL);
     }
@@ -375,7 +524,7 @@ void handleCommand(JsonDocument& doc) {
 int findOutputIndex(const char* output_id) {
   if (!output_id) return -1;
   for (int i = 0; i < NUM_OUTPUTS; i++) {
-    if (String(outputs[i].output_id) == String(output_id)) return i;
+    if (String(outputs[i].output_id).equalsIgnoreCase(String(output_id))) return i;
   }
   return -1;
 }

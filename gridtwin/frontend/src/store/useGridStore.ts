@@ -681,6 +681,16 @@ export const useGridStore = create<GridState>((set, get) => ({
   },
 
   toggleHardwareLogic: async (action: 'INVERT' | 'ACTIVE_HIGH' | 'ACTIVE_LOW' = 'INVERT') => {
+    if (get().isUsbConnected) {
+      await get().sendSerialLine('INVERT');
+      await get().sendSerialLine(JSON.stringify({ action: 'INVERT' }));
+      get().addAlert({
+        severity: 'INFO',
+        source: 'HARDWARE_CONFIG',
+        message: 'Inverted physical relay logic (Active-LOW ↔ Active-HIGH) via USB Web Serial.',
+        is_active: true,
+      });
+    }
     try {
       await fetch(`${API_BASE}/api/v1/hardware/logic`, {
         method: 'POST',
@@ -1010,11 +1020,12 @@ export const useGridStore = create<GridState>((set, get) => ({
   sendHardwareTowerCommand: async (towerId, targetState) => {
     // 1. Direct Web Serial USB Command (Instant & Works Offline)
     if (get().isUsbConnected) {
-      const charMap: Record<string, string> = { T1: '1', T2: '2', T3: '3', T4: '4', T5: '5' };
-      const ch = charMap[towerId];
-      if (ch) {
-        await get().sendSerialLine(ch);
-      }
+      await get().sendSerialLine(`${towerId}:${targetState}`);
+      await get().sendSerialLine(JSON.stringify({
+        action: targetState === 'OFF' ? 'ISOLATE' : 'RESTORE',
+        output_id: towerId,
+        requested_state: targetState
+      }));
       set(state => {
         const next = { ...state.pendingTowers };
         delete next[towerId];
@@ -1095,11 +1106,10 @@ export const useGridStore = create<GridState>((set, get) => ({
   },
 
   sendHardwareIsolateCommand: async (towerId) => {
-    // 1. Direct Web Serial USB Command
+    // 1. Direct Web Serial USB Command (Unambiguous explicit OFF)
     if (get().isUsbConnected) {
-      const charMap: Record<string, string> = { T1: '1', T2: '2', T3: '3', T4: '4', T5: '5' };
-      const ch = charMap[towerId];
-      if (ch) await get().sendSerialLine(ch);
+      await get().sendSerialLine(`${towerId}:OFF`);
+      await get().sendSerialLine(JSON.stringify({ action: 'ISOLATE', output_id: towerId, requested_state: 'OFF' }));
       set(state => ({
         hardwareDevice: {
           ...state.hardwareDevice,
@@ -1109,7 +1119,7 @@ export const useGridStore = create<GridState>((set, get) => ({
           {
             id: `evt-${Date.now()}`,
             timestamp: new Date().toLocaleTimeString(),
-            event: `[USB SERIAL] ISOLATED Tower ${towerId} on physical ESP32 relay.`,
+            event: `[USB SERIAL] ISOLATED Tower ${towerId} -> Physical relay turned OFF.`,
             type: 'HARDWARE'
           },
           ...state.eventLogs
@@ -1175,11 +1185,10 @@ export const useGridStore = create<GridState>((set, get) => ({
   },
 
   sendHardwareRestoreCommand: async (towerId) => {
-    // 1. Direct Web Serial USB Command
+    // 1. Direct Web Serial USB Command (Unambiguous explicit ON)
     if (get().isUsbConnected) {
-      const charMap: Record<string, string> = { T1: '1', T2: '2', T3: '3', T4: '4', T5: '5' };
-      const ch = charMap[towerId];
-      if (ch) await get().sendSerialLine(ch);
+      await get().sendSerialLine(`${towerId}:ON`);
+      await get().sendSerialLine(JSON.stringify({ action: 'RESTORE', output_id: towerId, requested_state: 'ON' }));
       set(state => ({
         hardwareDevice: {
           ...state.hardwareDevice,
@@ -1189,7 +1198,7 @@ export const useGridStore = create<GridState>((set, get) => ({
           {
             id: `evt-${Date.now()}`,
             timestamp: new Date().toLocaleTimeString(),
-            event: `[USB SERIAL] RESTORED Tower ${towerId} on physical ESP32 relay.`,
+            event: `[USB SERIAL] RESTORED Tower ${towerId} -> Physical relay turned ON.`,
             type: 'HARDWARE'
           },
           ...state.eventLogs
@@ -1256,7 +1265,11 @@ export const useGridStore = create<GridState>((set, get) => ({
   sendHardwareSetAllCommand: async (targetState) => {
     // 1. Direct Web Serial USB Command
     if (get().isUsbConnected) {
-      await get().sendSerialLine(targetState === 'ON' ? '9' : '0');
+      await get().sendSerialLine(`ALL:${targetState}`);
+      await get().sendSerialLine(JSON.stringify({ 
+        action: targetState === 'ON' ? 'ALL_ON' : 'ALL_OFF', 
+        state: targetState 
+      }));
       set(state => ({
         hardwareDevice: {
           ...state.hardwareDevice,

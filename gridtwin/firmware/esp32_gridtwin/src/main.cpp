@@ -293,15 +293,25 @@ void setRelayHardware(int idx, bool targetState) {
     if (idx < 0 || idx >= NUM_OUTPUTS) return;
     
     int pin = outputs[idx].gpio_pin;
-    int pinValue = targetState ? RELAY_STATE_ON : RELAY_STATE_OFF;
-    digitalWrite(pin, pinValue);
+    if (RELAY_ACTIVE_LOW) {
+        if (targetState) {
+            pinMode(pin, OUTPUT);
+            digitalWrite(pin, LOW);
+        } else {
+            pinMode(pin, INPUT);
+            digitalWrite(pin, HIGH);
+        }
+    } else {
+        pinMode(pin, OUTPUT);
+        digitalWrite(pin, targetState ? HIGH : LOW);
+    }
     outputs[idx].current_state = targetState;
     
-    Serial.printf("[HARDWARE] %s (GPIO %d) -> %s [Pin Level: %s]\n",
+    Serial.printf("[HARDWARE] %s (GPIO %d) -> %s [Relay %s]\n",
         outputs[idx].output_id,
         pin,
         targetState ? "ON (Energized)" : "OFF (De-energized)",
-        pinValue == LOW ? "LOW" : "HIGH");
+        targetState ? "CLOSED" : "OPEN");
 }
 
 void handleCommand(JsonDocument& doc) {
