@@ -304,27 +304,23 @@ void setupOutputs() {
 void setRelayHardware(int idx, bool targetState) {
   if (idx < 0 || idx >= NUM_OUTPUTS) return;
   int pin = outputs[idx].gpio_pin;
+  pinMode(pin, OUTPUT);
 
   if (RELAY_ACTIVE_LOW) {
-    if (targetState) {
-      // Energize: Pull LOW to sink current to GND
-      pinMode(pin, OUTPUT);
-      digitalWrite(pin, LOW);
-    } else {
-      // De-energize: Floating INPUT stops any 5V-to-3.3V leakage through optocoupler
-      pinMode(pin, INPUT);
-      digitalWrite(pin, HIGH);
-    }
+    // Active-LOW (Standard Optocoupled 8-Ch Relay): LOW = Energized (LED ON), HIGH = De-energized (LED OFF)
+    digitalWrite(pin, targetState ? LOW : HIGH);
   } else {
-    // Active-HIGH mode
-    pinMode(pin, OUTPUT);
+    // Active-HIGH: HIGH = Energized (LED ON), LOW = De-energized (LED OFF)
     digitalWrite(pin, targetState ? HIGH : LOW);
   }
 
   outputs[idx].current_state = targetState;
 
-  Serial.printf("[HARDWARE] %s (GPIO %d) -> %s [Relay %s]\n",
-    outputs[idx].output_id, pin, targetState ? "ON" : "OFF", targetState ? "ENERGIZED" : "DE-ENERGIZED");
+  Serial.printf("[HARDWARE] %s (GPIO %d) -> %s [Pin Level: %s, Logic: %s]\n",
+    outputs[idx].output_id, pin,
+    targetState ? "ON (Energized)" : "OFF (De-energized)",
+    digitalRead(pin) == HIGH ? "HIGH" : "LOW",
+    RELAY_ACTIVE_LOW ? "ACTIVE-LOW" : "ACTIVE-HIGH");
 
   if (mqttClient.connected()) {
     publishHeartbeat();
@@ -525,6 +521,7 @@ int findOutputIndex(const char* output_id) {
   if (!output_id) return -1;
   for (int i = 0; i < NUM_OUTPUTS; i++) {
     if (String(outputs[i].output_id).equalsIgnoreCase(String(output_id))) return i;
+
   }
   return -1;
 }

@@ -163,7 +163,10 @@ export const TollFreePanel: React.FC = () => {
     turnTowerOn,
     turnTowerOff,
     isReverseFeedActive,
-    setActiveTab
+    setActiveTab,
+    isUsbConnected,
+    connectUsbSerial,
+    toggleHardwareLogic
   } = useGridStore();
 
   // Call Lifecycle State
@@ -616,7 +619,15 @@ export const TollFreePanel: React.FC = () => {
   };
 
   // Toggle Tower from UI
-  const handleTowerToggle = (towerId: 'T1' | 'T2' | 'T3' | 'T4' | 'T5') => {
+  const handleTowerToggle = async (towerId: 'T1' | 'T2' | 'T3' | 'T4' | 'T5') => {
+    if (!isUsbConnected && typeof window !== 'undefined' && 'serial' in navigator) {
+      addTranscript('system', `[HARDWARE] Attempting direct USB Serial connection to ESP32...`);
+      const ok = await connectUsbSerial();
+      if (!ok) {
+        addTranscript('system', `[NOTE] ESP32 not connected. Please click "CONNECT ESP32 (USB)" at the top to sync physical relays.`);
+      }
+    }
+
     if (isolatedTowers.includes(towerId)) {
       turnTowerOn(towerId);
       addTranscript('system', `[2-WAY SYNC] Tower ${towerId} RESTORED from Toll-Free UI.`);
@@ -887,10 +898,34 @@ export const TollFreePanel: React.FC = () => {
                   <p className="text-xs text-slate-300 font-medium">Direct 2-Way Real-Time Synchronization with 3D Digital Twin</p>
                 </div>
               </div>
-              <span className="px-3.5 py-1 rounded-full bg-cyan-950 border border-cyan-400/50 text-cyan-300 font-mono text-xs font-black flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                Live 3D Twin Store
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {isUsbConnected ? (
+                  <span className="px-3 py-1 rounded-full bg-emerald-950 border border-emerald-400/60 text-emerald-300 font-mono text-xs font-bold flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    ESP32 USB Synced
+                  </span>
+                ) : (
+                  <button
+                    onClick={connectUsbSerial}
+                    className="px-3.5 py-1.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-black flex items-center gap-1.5 shadow-[0_0_15px_rgba(239,68,68,0.5)] animate-pulse cursor-pointer border border-rose-400 transition-all active:scale-95"
+                    title="Click to connect your ESP32 via USB so physical tower lights respond"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>🔌 Connect ESP32 USB</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => toggleHardwareLogic('INVERT')}
+                  className="px-2.5 py-1 rounded-full bg-purple-950/80 hover:bg-purple-900 border border-purple-400/50 text-purple-300 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
+                  title="Invert ON/OFF Relay Logic if physical lights are opposite"
+                >
+                  <span>🔄 Invert Polarity</span>
+                </button>
+                <span className="px-3.5 py-1 rounded-full bg-cyan-950 border border-cyan-400/50 text-cyan-300 font-mono text-xs font-black flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                  Live 3D Twin Store
+                </span>
+              </div>
             </div>
 
             {/* Dynamic Grid Summary Alert Banner matching reference mockup */}
