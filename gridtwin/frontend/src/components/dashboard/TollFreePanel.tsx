@@ -210,9 +210,38 @@ export const TollFreePanel: React.FC = () => {
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
   const callersTableContainerRef = useRef<HTMLDivElement | null>(null);
   const auditTableContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Preload studio neural audio files for instant female voice playback
+  useEffect(() => {
+    const coreAudios = [
+      'welcome_all', 'welcome_ta', 'welcome_en', 'welcome_hi',
+      'prompt_tower_ta', 'prompt_tower_en', 'prompt_tower_hi',
+      'invalid_tower_ta', 'invalid_tower_en', 'invalid_tower_hi',
+      'tower_1_active_ta', 'tower_1_isolated_ta',
+      'tower_2_active_ta', 'tower_2_isolated_ta',
+      'tower_3_active_ta', 'tower_3_isolated_ta',
+      'tower_4_active_ta', 'tower_4_isolated_ta',
+      'tower_5_active_ta', 'tower_5_isolated_ta',
+      'tower_1_active_en', 'tower_1_isolated_en',
+      'tower_2_active_en', 'tower_2_isolated_en',
+      'tower_3_active_en', 'tower_3_isolated_en',
+      'tower_4_active_en', 'tower_4_isolated_en',
+      'tower_5_active_en', 'tower_5_isolated_en',
+      'menu_ta', 'goodbye_ta'
+    ];
+
+    coreAudios.forEach(name => {
+      try {
+        const audio = new Audio(`/audio/${name}.mp3`);
+        audio.preload = 'auto';
+        audioCacheRef.current.set(name, audio);
+      } catch {}
+    });
+  }, []);
 
   // Save registered callers to localStorage
   useEffect(() => {
@@ -310,7 +339,58 @@ export const TollFreePanel: React.FC = () => {
     }
   };
 
-  // Professional Studio MP3 & Crystal-Clear Natural Speech Audio Engine
+  // Clean and phonetically format Tamil & Indian languages for crystal-clear natural speech
+  const formatTextForClearSpeech = (text: string, lang: 'en' | 'ta' | 'hi'): string => {
+    if (lang === 'ta') {
+      return text
+        .replace(/\[விருப்பங்கள்\].*$/s, '')
+        .replace(/\[OPTIONS\].*$/s, '')
+        .replace(/\[.*?\]/g, ' ')
+        .replace(/[\[\]\(\)>*#:]/g, ' ')
+        // Convert numbers and decimals to authentic spoken Tamil words
+        .replace(/\b145\.2\b/g, 'நூற்று நாற்பத்தைந்து புள்ளி இரண்டு')
+        .replace(/\b145\b/g, 'நூற்று நாற்பத்தைந்து')
+        .replace(/\b5\.0\b/g, 'ஐந்து')
+        .replace(/\b0\.0\b/g, 'பூஜ்ஜியம்')
+        .replace(/\b1\b/g, 'ஒன்று')
+        .replace(/\b2\b/g, 'இரண்டு')
+        .replace(/\b3\b/g, 'மூன்று')
+        .replace(/\b4\b/g, 'நான்கு')
+        .replace(/\b5\b/g, 'ஐந்து')
+        .replace(/\b9\b/g, 'ஒன்பது')
+        .replace(/\b0\b/g, 'பூஜ்ஜியம்')
+        // Convert engineering units into pure Tamil
+        .replace(/\bmA\b/gi, 'மில்லி ஆம்பியர்')
+        .replace(/\bV\b/gi, 'வோல்ட்')
+        .replace(/\bT1\b/gi, 'கோபுரம் ஒன்று')
+        .replace(/\bT2\b/gi, 'கோபுரம் இரண்டு')
+        .replace(/\bT3\b/gi, 'கோபுரம் மூன்று')
+        .replace(/\bT4\b/gi, 'கோபுரம் நான்கு')
+        .replace(/\bT5\b/gi, 'கோபுரம் ஐந்து')
+        .replace(/\s+/g, ' ')
+        .trim();
+    } else if (lang === 'hi') {
+      return text
+        .replace(/\[विकल्प\].*$/s, '')
+        .replace(/\[OPTIONS\].*$/s, '')
+        .replace(/\[.*?\]/g, ' ')
+        .replace(/[\[\]\(\)>*#:]/g, ' ')
+        .replace(/\b145\.2\b/g, 'एक सौ पैंतालीस दशमलव दो')
+        .replace(/\b145\b/g, 'एक सौ पैंतालीस')
+        .replace(/\b5\.0\b/g, 'पांच')
+        .replace(/\b0\.0\b/g, 'शून्य')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+    return text
+      .replace(/\[OPTIONS\].*$/s, '')
+      .replace(/\[.*?\]/g, ' ')
+      .replace(/[\[\]\(\)>*#:]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Professional Studio Neural Audio Player (Preloaded Microsoft Pallavi Neural Female Tamil)
   const playAudioPrompt = (
     audioFilename: string,
     fallbackText: string,
@@ -324,17 +404,28 @@ export const TollFreePanel: React.FC = () => {
 
     // Stop any existing speech or audio playback
     if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current.currentTime = 0;
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+      } catch {}
       currentAudioRef.current = null;
     }
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
     }
 
-    const audioUrl = `/audio/${audioFilename}.mp3`;
-    const audio = new Audio(audioUrl);
+    let audio = audioCacheRef.current.get(audioFilename);
+    if (!audio) {
+      audio = new Audio(`/audio/${audioFilename}.mp3`);
+      audioCacheRef.current.set(audioFilename, audio);
+    }
+
     currentAudioRef.current = audio;
+    try {
+      audio.currentTime = 0;
+    } catch {}
     setIsSpeaking(true);
 
     let finished = false;
@@ -350,49 +441,84 @@ export const TollFreePanel: React.FC = () => {
 
     audio.onended = onFinish;
     audio.onerror = () => {
+      console.warn(`Audio /audio/${audioFilename}.mp3 unavailable, falling back to female TTS.`);
       currentAudioRef.current = null;
       fallbackToTts(fallbackText, langCode, onFinish);
     };
 
-    audio.play().catch(() => {
-      currentAudioRef.current = null;
-      fallbackToTts(fallbackText, langCode, onFinish);
-    });
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        currentAudioRef.current = null;
+        fallbackToTts(fallbackText, langCode, onFinish);
+      });
+    }
   };
 
+  // High-Fidelity Female / Girl Voice Speech Synthesis Engine (Tamil, Hindi, English)
   const fallbackToTts = (text: string, langCode: 'en' | 'ta' | 'hi' = 'en', onEnd?: () => void) => {
-    if (!allowTts || !('speechSynthesis' in window)) {
+    if (!allowTts || typeof window === 'undefined' || !('speechSynthesis' in window)) {
       if (onEnd) onEnd();
       return;
     }
 
     try {
       window.speechSynthesis.cancel();
-      // Remove UI brackets and technical symbols
-      const cleanText = text
-        .replace(/\[விருப்பங்கள்\].*$/s, '')
-        .replace(/\[OPTIONS\].*$/s, '')
-        .replace(/\[विकल्प\].*$/s, '')
-        .replace(/[\[\]]/g, '')
-        .trim();
-
+      const cleanText = formatTextForClearSpeech(text, langCode);
       const utterance = new SpeechSynthesisUtterance(cleanText);
       const localeMap = { en: 'en-IN', ta: 'ta-IN', hi: 'hi-IN' };
-      utterance.lang = localeMap[langCode] || 'en-IN';
-      utterance.rate = 0.88; // Slower, crisp articulation
-      utterance.pitch = 1.0;
+      utterance.lang = localeMap[langCode] || 'ta-IN';
 
       const voices = window.speechSynthesis.getVoices();
-      const targetLocale = utterance.lang.toLowerCase();
-      const langPrefix = targetLocale.split('-')[0];
+      const femaleRegex = /female|woman|girl|pallavi|swara|neerja|vani|priya|kalpana|kavya|lekha|madhur|shruti|zira|jenny|google/i;
 
-      // Prioritize Google Cloud / Natural / Online high-fidelity voices
-      const bestVoice =
-        voices.find(v => (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Online')) && v.lang.toLowerCase().startsWith(langPrefix))
-        || voices.find(v => v.lang.toLowerCase() === targetLocale)
-        || voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
+      let matchedVoice: SpeechSynthesisVoice | null = null;
+      let isFemale = false;
 
-      if (bestVoice) utterance.voice = bestVoice;
+      if (langCode === 'ta') {
+        // 1. Search for dedicated Tamil female voices (e.g. Google தமிழ், Pallavi, Vani)
+        const femaleTa = voices.find(v =>
+          v.lang.toLowerCase().startsWith('ta') && (femaleRegex.test(v.name) || femaleRegex.test(v.voiceURI))
+        );
+        if (femaleTa) {
+          matchedVoice = femaleTa;
+          isFemale = true;
+        } else {
+          // 2. Any Tamil voice (e.g. Microsoft Valluvar)
+          const anyTa = voices.find(v => v.lang.toLowerCase().startsWith('ta'));
+          if (anyTa) {
+            matchedVoice = anyTa;
+            isFemale = false; // We will pitch-modulate male voice into girl frequency!
+          }
+        }
+      } else if (langCode === 'hi') {
+        const femaleHi = voices.find(v =>
+          v.lang.toLowerCase().startsWith('hi') && (femaleRegex.test(v.name) || femaleRegex.test(v.voiceURI))
+        );
+        matchedVoice = femaleHi || voices.find(v => v.lang.toLowerCase().startsWith('hi')) || null;
+        isFemale = !!femaleHi;
+      } else {
+        const femaleEn = voices.find(v =>
+          (v.lang.toLowerCase() === 'en-in' || v.lang.toLowerCase().startsWith('en')) && femaleRegex.test(v.name)
+        );
+        matchedVoice = femaleEn || voices.find(v => v.lang.toLowerCase().startsWith('en')) || null;
+        isFemale = !!femaleEn;
+      }
+
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
+      }
+
+      // Voice Pitch & Articulation tuning for Clear Girl Voice:
+      // If native female voice is found: gentle, natural girl voice pitch (1.10)
+      // If voice is male (like Microsoft Valluvar on Windows): pitch shift up by +42% (1.42) to transform into high, clear female pitch!
+      if (isFemale) {
+        utterance.pitch = 1.10;
+        utterance.rate = 0.90; // Smooth, clear tempo
+      } else {
+        utterance.pitch = 1.42; // Transposes male resonance into a clear girl vocal range
+        utterance.rate = 0.88;  // Clear, crisp articulation
+      }
 
       setIsSpeaking(true);
       utterance.onend = () => {
@@ -681,7 +807,8 @@ export const TollFreePanel: React.FC = () => {
   const handleQuickDial = (num: string) => {
     if (!callActive) {
       handleStartCall();
-      setTimeout(() => handleKeyPress('2'), 600); // Select English
+      const langDigit = selectedLanguage === 'ta' ? '1' : selectedLanguage === 'hi' ? '3' : '2';
+      setTimeout(() => handleKeyPress(langDigit), 600); // Select Active Language
       setTimeout(() => handleKeyPress(num), 1400); // Select Tower
     } else {
       handleKeyPress(num);
@@ -827,9 +954,15 @@ export const TollFreePanel: React.FC = () => {
                 {displayText}
               </div>
               {isSpeaking && (
-                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-800 text-xs text-cyan-300 font-bold">
-                  <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" />
-                  <span>Speaking ({selectedLanguage.toUpperCase()})...</span>
+                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-slate-800 text-xs text-cyan-300 font-bold">
+                  <div className="flex items-center gap-2">
+                    <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" />
+                    <span>Speaking ({selectedLanguage.toUpperCase()})...</span>
+                  </div>
+                  <span className="text-[10px] text-pink-300 bg-pink-950/80 border border-pink-500/50 px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1 shadow-sm">
+                    <span>👧</span>
+                    <span>{selectedLanguage === 'ta' ? 'பெண் குரல் (Tamil Girl Voice)' : 'Female Voice'}</span>
+                  </span>
                 </div>
               )}
             </div>
@@ -936,18 +1069,35 @@ export const TollFreePanel: React.FC = () => {
               )}
             </div>
 
-            {/* Audio Voice Speech Toggle */}
-            <div className="flex items-center justify-between text-xs text-slate-400 px-1 pt-0.5">
-              <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-white transition-colors">
-                <input
-                  type="checkbox"
-                  checked={allowTts}
-                  onChange={(e) => setAllowTts(e.target.checked)}
-                  className="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0"
-                />
-                <span>Allow Voice Speech (TTS)</span>
-              </label>
-              {allowTts ? <Volume2 className="w-4 h-4 text-cyan-400" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
+            {/* Audio Voice Speech Toggle & Tamil Girl Voice Tester */}
+            <div className="flex flex-col gap-2 pt-1 border-t border-slate-800/80">
+              <div className="flex items-center justify-between text-xs text-slate-400 px-1 pt-0.5">
+                <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-white transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={allowTts}
+                    onChange={(e) => setAllowTts(e.target.checked)}
+                    className="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0"
+                  />
+                  <span>Voice Speech Active</span>
+                </label>
+                <span className="text-[10px] text-pink-300 bg-pink-950/70 border border-pink-500/40 px-2 py-0.5 rounded-full font-mono flex items-center gap-1 shadow-sm">
+                  <span>👧</span>
+                  <span>Tamil Girl Voice (பெண் குரல்)</span>
+                </span>
+              </div>
+
+              {/* Instant Test Tamil Girl Voice Button */}
+              <button
+                type="button"
+                onClick={() => playAudioPrompt('welcome_ta', 'வணக்கம். கிரிட்த்வின் ஸ்மார்ட் மின் பகிர்மான சேவைக்கு நல்வரவு.', 'ta')}
+                className="w-full py-1.5 px-3 rounded-xl bg-pink-950/40 hover:bg-pink-900/50 border border-pink-500/40 text-pink-300 text-[11px] font-bold flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer shadow-sm"
+                title="Test clear Tamil female neural voice"
+              >
+                <span>👧</span>
+                <span>Test Tamil Girl Voice (பெண் குரல் கேட்க)</span>
+                <Volume2 className="w-3.5 h-3.5 text-pink-400" />
+              </button>
             </div>
           </div>
         </div>
