@@ -30,6 +30,9 @@ export const HardwareBridgePanel: React.FC = () => {
     sendHardwareRestoreCommand,
     sendHardwareSetAllCommand,
     fetchHardwareStatus,
+    isUsbConnected,
+    connectUsbSerial,
+    disconnectUsbSerial,
   } = useGridStore();
 
   const [testLog, setTestLog] = useState<string[]>([
@@ -134,8 +137,26 @@ export const HardwareBridgePanel: React.FC = () => {
           </p>
         </div>
 
-        {/* Operating Mode Selector */}
+        {/* Operating Mode Selector & USB Web Serial Button */}
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              if (isUsbConnected || hardwareDevice.status === 'ONLINE') {
+                disconnectUsbSerial();
+              } else {
+                connectUsbSerial();
+              }
+            }}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-2 border transition-all cursor-pointer ${
+              hardwareDevice.status === 'ONLINE'
+                ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)] hover:bg-emerald-900'
+                : 'bg-blue-600 hover:bg-blue-500 text-white border-blue-400 shadow-md shadow-blue-500/30 animate-pulse'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>{hardwareDevice.status === 'ONLINE' ? 'USB Connected (Disconnect)' : '🔌 Connect ESP32 via USB'}</span>
+          </button>
+
           <div className="flex items-center bg-slate-900 border border-slate-800 p-1 rounded-xl">
             <button
               onClick={() => setHardwareMode('PHYSICAL')}

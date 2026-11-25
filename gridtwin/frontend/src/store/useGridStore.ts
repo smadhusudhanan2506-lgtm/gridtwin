@@ -104,6 +104,11 @@ interface GridState {
   sendHardwareSetAllCommand: (targetState: 'ON' | 'OFF') => Promise<void>;
   fetchHardwareStatus: () => Promise<void>;
   handleWebSocketMessage: (type: string, data: any) => void;
+  isUsbConnected: boolean;
+  connectUsbSerial: () => Promise<boolean>;
+  disconnectUsbSerial: () => Promise<void>;
+  sendSerialLine: (text: string) => Promise<boolean>;
+  handleSerialLine: (raw: string) => void;
 }
 
 // Initial 5-Section Topology Data
@@ -272,12 +277,18 @@ function calculateConnectivity(
   };
 }
 
+// Web Serial Port References for direct Chrome-to-ESP32 USB Communication
+let usbSerialPort: any = null;
+let usbSerialWriter: any = null;
+let usbSerialReader: any = null;
+
 export const useGridStore = create<GridState>((set, get) => ({
   nodes: INITIAL_NODES,
   edges: INITIAL_EDGES,
   switches: INITIAL_SWITCHES,
   loads: INITIAL_LOADS,
   connectivity: calculateConnectivity(INITIAL_SWITCHES),
+  isUsbConnected: false,
 
   hardwareDevice: {
     device_id: 'esp32-gridtwin-001',
@@ -997,6 +1008,39 @@ export const useGridStore = create<GridState>((set, get) => ({
   },
 
   sendHardwareTowerCommand: async (towerId, targetState) => {
+    // 1. Direct Web Serial USB Command (Instant & Works Offline)
+    if (get().isUsbConnected) {
+      const charMap: Record<string, string> = { T1: '1', T2: '2', T3: '3', T4: '4', T5: '5' };
+      const ch = charMap[towerId];
+      if (ch) {
+        await get().sendSerialLine(ch);
+      }
+      set(state => {
+        const next = { ...state.pendingTowers };
+        delete next[towerId];
+        return {
+          pendingTowers: next,
+          hardwareDevice: {
+            ...state.hardwareDevice,
+            output_states: {
+              ...state.hardwareDevice.output_states,
+              [towerId]: targetState
+            }
+          },
+          eventLogs: [
+            {
+              id: `evt-${Date.now()}`,
+              timestamp: new Date().toLocaleTimeString(),
+              event: `[USB SERIAL] Tower ${towerId} -> ${targetState} executed on ESP32 hardware.`,
+              type: 'HARDWARE'
+            },
+            ...state.eventLogs
+          ]
+        };
+      });
+      return;
+    }
+
     set(state => ({
       pendingTowers: { ...state.pendingTowers, [towerId]: true },
       eventLogs: [
@@ -1051,6 +1095,29 @@ export const useGridStore = create<GridState>((set, get) => ({
   },
 
   sendHardwareIsolateCommand: async (towerId) => {
+    // 1. Direct Web Serial USB Command
+    if (get().isUsbConnected) {
+      const charMap: Record<string, string> = { T1: '1', T2: '2', T3: '3', T4: '4', T5: '5' };
+      const ch = charMap[towerId];
+      if (ch) await get().sendSerialLine(ch);
+      set(state => ({
+        hardwareDevice: {
+          ...state.hardwareDevice,
+          output_states: { ...state.hardwareDevice.output_states, [towerId]: 'OFF' }
+        },
+        eventLogs: [
+          {
+            id: `evt-${Date.now()}`,
+            timestamp: new Date().toLocaleTimeString(),
+            event: `[USB SERIAL] ISOLATED Tower ${towerId} on physical ESP32 relay.`,
+            type: 'HARDWARE'
+          },
+          ...state.eventLogs
+        ]
+      }));
+      return;
+    }
+
     set(state => ({
       pendingTowers: { ...state.pendingTowers, [towerId]: true },
       eventLogs: [
@@ -1108,6 +1175,29 @@ export const useGridStore = create<GridState>((set, get) => ({
   },
 
   sendHardwareRestoreCommand: async (towerId) => {
+    // 1. Direct Web Serial USB Command
+    if (get().isUsbConnected) {
+      const charMap: Record<string, string> = { T1: '1', T2: '2', T3: '3', T4: '4', T5: '5' };
+      const ch = charMap[towerId];
+      if (ch) await get().sendSerialLine(ch);
+      set(state => ({
+        hardwareDevice: {
+          ...state.hardwareDevice,
+          output_states: { ...state.hardwareDevice.output_states, [towerId]: 'ON' }
+        },
+        eventLogs: [
+          {
+            id: `evt-${Date.now()}`,
+            timestamp: new Date().toLocaleTimeString(),
+            event: `[USB SERIAL] RESTORED Tower ${towerId} on physical ESP32 relay.`,
+            type: 'HARDWARE'
+          },
+          ...state.eventLogs
+        ]
+      }));
+      return;
+    }
+
     set(state => ({
       pendingTowers: { ...state.pendingTowers, [towerId]: true },
       eventLogs: [
@@ -1164,6 +1254,27 @@ export const useGridStore = create<GridState>((set, get) => ({
   },
 
   sendHardwareSetAllCommand: async (targetState) => {
+    // 1. Direct Web Serial USB Command
+    if (get().isUsbConnected) {
+      await get().sendSerialLine(targetState === 'ON' ? '9' : '0');
+      set(state => ({
+        hardwareDevice: {
+          ...state.hardwareDevice,
+          output_states: { T1: targetState, T2: targetState, T3: targetState, T4: targetState, T5: targetState }
+        },
+        eventLogs: [
+          {
+            id: `evt-${Date.now()}`,
+            timestamp: new Date().toLocaleTimeString(),
+            event: `[USB SERIAL] Set ALL towers -> ${targetState} on physical ESP32 relays.`,
+            type: 'HARDWARE'
+          },
+          ...state.eventLogs
+        ]
+      }));
+      return;
+    }
+
     const allTowers = ['T1', 'T2', 'T3', 'T4', 'T5'];
     const pendingObj = allTowers.reduce((acc, t) => ({ ...acc, [t]: true }), {});
     set(state => ({
@@ -1209,6 +1320,9 @@ export const useGridStore = create<GridState>((set, get) => ({
   },
 
   fetchHardwareStatus: async () => {
+    if (get().isUsbConnected) {
+      return; // Direct USB manages hardware connection state
+    }
     try {
       const res = await fetch(`${API_BASE}/api/v1/hardware/status`);
       if (res.ok) {
@@ -1454,6 +1568,173 @@ export const useGridStore = create<GridState>((set, get) => ({
     }
     if (backendData.telemetry) {
       set({ ina219Telemetry: backendData.telemetry });
+    }
+  },
+
+  connectUsbSerial: async () => {
+    if (typeof window === 'undefined' || !('serial' in navigator)) {
+      alert('Web Serial is not supported in this browser. Please open in Google Chrome, Microsoft Edge, or Opera.');
+      return false;
+    }
+    try {
+      const port = await (navigator as any).serial.requestPort();
+      await port.open({ baudRate: 115200 });
+      usbSerialPort = port;
+
+      const encoder = new TextEncoderStream();
+      encoder.readable.pipeTo(port.writable);
+      usbSerialWriter = encoder.writable.getWriter();
+
+      const decoder = new TextDecoderStream();
+      port.readable.pipeTo(decoder.writable);
+      const reader = decoder.readable.getReader();
+      usbSerialReader = reader;
+
+      set({
+        isUsbConnected: true,
+        hardwareMode: 'PHYSICAL',
+        isBackendConnected: true,
+        hardwareDevice: {
+          ...get().hardwareDevice,
+          status: 'ONLINE',
+          name: 'ESP32 (USB WebSerial)',
+          ip_address: 'Direct USB COM Port',
+          roundtrip_latency_ms: 1,
+          last_seen_at: new Date().toISOString()
+        },
+        eventLogs: [
+          {
+            id: `evt-${Date.now()}`,
+            timestamp: new Date().toLocaleTimeString(),
+            event: '⚡ ESP32 connected directly via USB Serial at 115200 baud! Physical relays ready.',
+            type: 'HARDWARE'
+          },
+          ...get().eventLogs
+        ]
+      });
+
+      get().addAlert({
+        severity: 'INFO',
+        source: 'HARDWARE_BRIDGE',
+        message: 'ESP32 USB Serial connected! Real-time bidirectional hardware sync active.',
+        is_active: true
+      });
+
+      // Background read loop
+      (async () => {
+        let buf = '';
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) {
+              buf += value;
+              const lines = buf.split('\n');
+              buf = lines.pop() || '';
+              for (const l of lines) {
+                get().handleSerialLine(l);
+              }
+            }
+          }
+        } catch (e) {
+          console.debug('Serial read loop closed');
+        }
+      })();
+
+      return true;
+    } catch (err: any) {
+      console.warn('USB Serial connection cancelled or failed:', err);
+      return false;
+    }
+  },
+
+  disconnectUsbSerial: async () => {
+    try {
+      if (usbSerialReader) await usbSerialReader.cancel();
+      if (usbSerialWriter) await usbSerialWriter.close();
+      if (usbSerialPort) await usbSerialPort.close();
+    } catch (e) {}
+    usbSerialPort = null;
+    usbSerialWriter = null;
+    usbSerialReader = null;
+    set(state => ({
+      isUsbConnected: false,
+      hardwareDevice: {
+        ...state.hardwareDevice,
+        status: 'OFFLINE'
+      },
+      eventLogs: [
+        {
+          id: `evt-${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString(),
+          event: 'ESP32 USB Serial disconnected.',
+          type: 'HARDWARE'
+        },
+        ...state.eventLogs
+      ]
+    }));
+  },
+
+  sendSerialLine: async (text: string) => {
+    if (!usbSerialWriter) return false;
+    try {
+      await usbSerialWriter.write(text.endsWith('\n') ? text : `${text}\n`);
+      return true;
+    } catch (e) {
+      console.error('Serial write error:', e);
+      return false;
+    }
+  },
+
+  handleSerialLine: (raw: string) => {
+    const line = raw.trim();
+    if (!line) return;
+
+    // Check for JSON telemetry from ESP32
+    if (line.startsWith('{') && line.endsWith('}')) {
+      try {
+        const data = JSON.parse(line);
+        if (data.status === 'ONLINE' || data.device_id) {
+          set(state => {
+            const userIso = state.isolatedTowers || [];
+            const mergedOutputs = { ...state.hardwareDevice.output_states, ...(data.output_states || {}) };
+            for (const isoT of userIso) {
+              mergedOutputs[isoT] = 'OFF';
+            }
+            return {
+              hardwareDevice: {
+                ...state.hardwareDevice,
+                status: 'ONLINE',
+                last_seen_at: new Date().toISOString(),
+                output_states: mergedOutputs
+              },
+              ina219Telemetry: {
+                ...state.ina219Telemetry,
+                bus_voltage_v: data.bus_voltage_v ?? state.ina219Telemetry.bus_voltage_v,
+                current_ma: data.current_ma ?? state.ina219Telemetry.current_ma,
+                sensor_status: 'OK',
+                recorded_at: new Date().toISOString()
+              }
+            };
+          });
+        }
+      } catch (e) {}
+      return;
+    }
+
+    // Check for [HARDWARE] logs from ESP32: e.g. [HARDWARE] T3 (GPIO 25) -> OFF
+    if (line.includes('[HARDWARE]')) {
+      const match = line.match(/T([1-5]).*->\s*(ON|OFF)/i);
+      if (match) {
+        const tId = `T${match[1]}` as 'T1'|'T2'|'T3'|'T4'|'T5';
+        const st = match[2].toUpperCase() as 'ON'|'OFF';
+        set(state => ({
+          hardwareDevice: {
+            ...state.hardwareDevice,
+            output_states: { ...state.hardwareDevice.output_states, [tId]: st }
+          }
+        }));
+      }
     }
   }
 }));

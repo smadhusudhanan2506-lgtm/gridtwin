@@ -20,7 +20,10 @@ export const Header: React.FC = () => {
     setHardwareMode,
     isMobileNavOpen,
     toggleMobileNav,
-    setActiveTab
+    setActiveTab,
+    isUsbConnected,
+    connectUsbSerial,
+    disconnectUsbSerial
   } = useGridStore();
 
   const [time, setTime] = useState(new Date());
@@ -105,14 +108,26 @@ export const Header: React.FC = () => {
           <span>{hardwareMode === 'PHYSICAL' ? 'REAL HARDWARE' : 'SIMULATION'}</span>
         </button>
 
-        {/* ESP32 Connectivity Pill */}
-        <div
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-bold ${
+        {/* ESP32 Connectivity Pill (Interactive One-Click USB Web Serial Connect) */}
+        <button
+          type="button"
+          onClick={() => {
+            if (isUsbConnected || hardwareDevice.status === 'ONLINE') {
+              disconnectUsbSerial();
+            } else {
+              connectUsbSerial();
+            }
+          }}
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 rounded-full border text-xs font-mono font-bold transition-all cursor-pointer ${
             hardwareDevice.status === 'ONLINE'
-              ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
-              : 'bg-rose-950/60 border-rose-500/60 text-rose-300 shadow-[0_0_10px_rgba(239,68,68,0.2)]'
+              ? 'bg-emerald-950/70 border-emerald-500/70 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)] hover:bg-emerald-900/60'
+              : 'bg-rose-950/70 border-rose-500/70 text-rose-300 shadow-[0_0_12px_rgba(239,68,68,0.3)] hover:bg-rose-900/60 animate-pulse'
           }`}
-          title={hardwareDevice.status === 'ONLINE' ? 'ESP32 Connected via MQTT' : 'ESP32 Device Standby'}
+          title={
+            hardwareDevice.status === 'ONLINE'
+              ? 'ESP32 Connected! Click to Disconnect USB'
+              : 'Click to Connect your ESP32 directly via USB Cable (Chrome Web Serial)'
+          }
         >
           {hardwareDevice.status === 'ONLINE' ? (
             <Wifi className="w-3.5 h-3.5 text-emerald-400" />
@@ -120,12 +135,14 @@ export const Header: React.FC = () => {
             <WifiOff className="w-3.5 h-3.5 text-rose-400" />
           )}
           <span className="text-white font-bold tracking-tight">
-            {hardwareDevice.status === 'ONLINE' ? 'ESP32 ONLINE' : 'ESP32 OFFLINE'}
+            {hardwareDevice.status === 'ONLINE'
+              ? (isUsbConnected ? 'ESP32 ONLINE (USB)' : 'ESP32 ONLINE')
+              : '🔌 CONNECT ESP32 (USB)'}
           </span>
           {hardwareDevice.status !== 'ONLINE' && (
             <Lock className="w-3 h-3 text-rose-400 ml-0.5" />
           )}
-        </div>
+        </button>
 
         {/* User Profile Avatar with Name & Chevron */}
         <div className="flex items-center gap-1.5 pl-1 cursor-pointer group">
