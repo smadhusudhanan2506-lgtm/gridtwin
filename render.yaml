@@ -37,4 +37,3 @@ services:
           type: web
           name: gridtwin-backend
           property: host
-

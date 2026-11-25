@@ -6,6 +6,9 @@ node_modules/
 # Production build outputs
 dist/
 build/
+.pio/
+.pioenvs/
+.piolibdeps/
 
 # Environment files
 .env
@@ -37,6 +40,7 @@ ENV/
 .idea/
 *.suo
 *.ntvs*
+
 # Database
 *.db
 *.sqlite
@@ -44,6 +48,9 @@ ENV/
 
 # Audio cache
 gridtwin toll free/static/audio_cache/*.mp3
+
+# Project internal prompts & large instructions
+MASTER_PROJECT_RECREATION_PROMPT.md
 
 *.sln
 *.sw?

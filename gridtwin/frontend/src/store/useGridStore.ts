@@ -1656,7 +1656,14 @@ export const useGridStore = create<GridState>((set, get) => ({
 
       return true;
     } catch (err: any) {
-      console.warn('USB Serial connection cancelled or failed:', err);
+      console.error('USB Serial connection error:', err);
+      if (err.name === 'NotFoundError') {
+        alert('ℹ️ No port selected.\n\nWhen the popup appears, click on your ESP32 in the list to highlight it, then click "Connect".');
+      } else if (err.name === 'NetworkError' || (err.message && err.message.toLowerCase().includes('failed to open'))) {
+        alert('⚠️ COM PORT BUSY / LOCKED!\n\nYour ESP32 is currently open in another program (like the Arduino IDE Serial Monitor).\n\n👉 Please CLOSE the Serial Monitor in Arduino IDE, then click Connect again!');
+      } else {
+        alert(`USB Serial Connection Note: ${err.message || err.name || 'Connection cancelled'}`);
+      }
       return false;
     }
   },
