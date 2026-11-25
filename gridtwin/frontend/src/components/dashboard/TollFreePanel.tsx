@@ -209,6 +209,7 @@ export const TollFreePanel: React.FC = () => {
   });
 
   const audioContextRef = useRef<AudioContext | null>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const transcriptContainerRef = useRef<HTMLDivElement | null>(null);
   const callersTableContainerRef = useRef<HTMLDivElement | null>(null);
   const auditTableContainerRef = useRef<HTMLDivElement | null>(null);
@@ -309,8 +310,57 @@ export const TollFreePanel: React.FC = () => {
     }
   };
 
-  // TTS Speech Synthesis
-  const speakText = (text: string, langCode: 'en' | 'ta' | 'hi' = 'en', onEnd?: () => void) => {
+  // Professional Studio MP3 & Crystal-Clear Natural Speech Audio Engine
+  const playAudioPrompt = (
+    audioFilename: string,
+    fallbackText: string,
+    langCode: 'en' | 'ta' | 'hi' = 'en',
+    onEnd?: () => void
+  ) => {
+    if (!allowTts) {
+      if (onEnd) onEnd();
+      return;
+    }
+
+    // Stop any existing speech or audio playback
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    const audioUrl = `/audio/${audioFilename}.mp3`;
+    const audio = new Audio(audioUrl);
+    currentAudioRef.current = audio;
+    setIsSpeaking(true);
+
+    let finished = false;
+    const onFinish = () => {
+      if (finished) return;
+      finished = true;
+      setIsSpeaking(false);
+      if (currentAudioRef.current === audio) {
+        currentAudioRef.current = null;
+      }
+      if (onEnd) onEnd();
+    };
+
+    audio.onended = onFinish;
+    audio.onerror = () => {
+      currentAudioRef.current = null;
+      fallbackToTts(fallbackText, langCode, onFinish);
+    };
+
+    audio.play().catch(() => {
+      currentAudioRef.current = null;
+      fallbackToTts(fallbackText, langCode, onFinish);
+    });
+  };
+
+  const fallbackToTts = (text: string, langCode: 'en' | 'ta' | 'hi' = 'en', onEnd?: () => void) => {
     if (!allowTts || !('speechSynthesis' in window)) {
       if (onEnd) onEnd();
       return;
@@ -318,17 +368,31 @@ export const TollFreePanel: React.FC = () => {
 
     try {
       window.speechSynthesis.cancel();
-      const cleanText = text.replace(/\[OPTIONS\].*$/s, '').trim();
-      const utterance = new SpeechSynthesisUtterance(cleanText);
+      // Remove UI brackets and technical symbols
+      const cleanText = text
+        .replace(/\[விருப்பங்கள்\].*$/s, '')
+        .replace(/\[OPTIONS\].*$/s, '')
+        .replace(/\[विकल्प\].*$/s, '')
+        .replace(/[\[\]]/g, '')
+        .trim();
 
+      const utterance = new SpeechSynthesisUtterance(cleanText);
       const localeMap = { en: 'en-IN', ta: 'ta-IN', hi: 'hi-IN' };
       utterance.lang = localeMap[langCode] || 'en-IN';
-      utterance.rate = 0.95;
+      utterance.rate = 0.88; // Slower, crisp articulation
+      utterance.pitch = 1.0;
 
       const voices = window.speechSynthesis.getVoices();
-      const langPrefix = utterance.lang.split('-')[0];
-      const matched = voices.find(v => v.lang.startsWith(langPrefix) || v.lang === utterance.lang);
-      if (matched) utterance.voice = matched;
+      const targetLocale = utterance.lang.toLowerCase();
+      const langPrefix = targetLocale.split('-')[0];
+
+      // Prioritize Google Cloud / Natural / Online high-fidelity voices
+      const bestVoice =
+        voices.find(v => (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Online')) && v.lang.toLowerCase().startsWith(langPrefix))
+        || voices.find(v => v.lang.toLowerCase() === targetLocale)
+        || voices.find(v => v.lang.toLowerCase().startsWith(langPrefix));
+
+      if (bestVoice) utterance.voice = bestVoice;
 
       setIsSpeaking(true);
       utterance.onend = () => {
@@ -370,14 +434,14 @@ export const TollFreePanel: React.FC = () => {
         const deniedMsg = 'Access Denied: Your phone number is not registered with GridTwin SCADA Hotline. Access is restricted to authorized personnel.';
         setDisplayText(`❌ ACCESS DENIED (UNREGISTERED)\n\n${deniedMsg}\n\nPlease register your phone number below.`);
         addTranscript('alert', `❌ CALL REJECTED: ${selectedCallerNumber} is UNREGISTERED`);
-        speakText(deniedMsg, 'en');
+        playAudioPrompt('invalid_tower_en', deniedMsg, 'en');
 
         logCallEvent(selectedCallerNumber, 'Unregistered Caller', 'UNREGISTERED', 'en', undefined, undefined, 0, 0, deniedMsg);
       } else {
         const blockedMsg = 'Access Denied: Your phone number is currently BLOCKED by Grid Administration. Calls cannot be connected.';
         setDisplayText(`🚫 ACCESS DENIED (BLOCKED)\n\n${blockedMsg}`);
         addTranscript('alert', `🚫 CALL REJECTED: ${auth.caller?.displayName || selectedCallerNumber} is BLOCKED`);
-        speakText(blockedMsg, 'en');
+        playAudioPrompt('invalid_tower_en', blockedMsg, 'en');
 
         logCallEvent(selectedCallerNumber, auth.caller?.displayName || 'Blocked Caller', 'BLOCKED', 'en', undefined, undefined, 0, 0, blockedMsg);
       }
@@ -393,7 +457,7 @@ export const TollFreePanel: React.FC = () => {
     addTranscript('ivr', `Connected to GRIDTWIN 24/7 Hotline. Caller: ${auth.caller?.displayName}`);
     addTranscript('ivr', 'Prompt: Press 1 for Tamil, 2 for English, 3 for Hindi.');
 
-    speakText('Welcome to GridTwin Toll-Free Hotline. Press 1 for Tamil, 2 for English, 3 for Hindi.', 'en');
+    playAudioPrompt('welcome_all', 'Welcome to GridTwin Toll-Free Hotline. Press 1 for Tamil, 2 for English, 3 for Hindi.', 'en');
   };
 
   const handleHangup = () => {
@@ -401,6 +465,11 @@ export const TollFreePanel: React.FC = () => {
     setCallStage('IDLE');
     setDisplayText('Call disconnected. Press "Call Toll-Free" to begin a new test.');
     setIsSpeaking(false);
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+    }
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     addTranscript('system', '📴 Call disconnected.');
   };
@@ -436,14 +505,14 @@ export const TollFreePanel: React.FC = () => {
       } else {
         const invalid = 'Invalid language digit. Press 1 for Tamil, 2 for English, 3 for Hindi.';
         setDisplayText(invalid);
-        speakText(invalid, 'en');
+        playAudioPrompt('invalid_tower_en', invalid, 'en');
         return;
       }
 
       setCallStage('TOWER_SELECTION');
       setDisplayText(`[LANGUAGE SELECTED: ${lang.toUpperCase()}]\n\n${promptText}`);
       addTranscript('ivr', promptText);
-      speakText(promptText, lang);
+      playAudioPrompt(`prompt_tower_${lang}`, promptText, lang);
     }
 
     // 2. Tower Selection Stage (1 to 5)
@@ -455,7 +524,7 @@ export const TollFreePanel: React.FC = () => {
           ? 'अमान्य टावर संख्या। कृपया 1 से 5 तक दबाएं।'
           : 'Invalid tower number. Please enter a digit from 1 to 5.';
         setDisplayText(invalid);
-        speakText(invalid, selectedLanguage);
+        playAudioPrompt(`invalid_tower_${selectedLanguage}`, invalid, selectedLanguage);
         return;
       }
 
@@ -492,7 +561,8 @@ export const TollFreePanel: React.FC = () => {
       setCallStage('MENU_OPTIONS');
       setDisplayText(`${statusMsg}${menuMsg}`);
       addTranscript('ivr', statusMsg);
-      speakText(statusMsg, selectedLanguage);
+      const audioKey = isIso ? `tower_${key}_isolated_${selectedLanguage}` : `tower_${key}_active_${selectedLanguage}`;
+      playAudioPrompt(audioKey, statusMsg, selectedLanguage);
 
       // Log Call to Audit Database
       const caller = getCallerAuthStatus(selectedCallerNumber).caller;
@@ -519,12 +589,12 @@ export const TollFreePanel: React.FC = () => {
           ? 'टावर संख्या 1 से 5 दर्ज करें।'
           : 'Please enter Tower ID from 1 to 5 to check isolation status.';
         setDisplayText(p);
-        speakText(p, selectedLanguage);
+        playAudioPrompt(`prompt_tower_${selectedLanguage}`, p, selectedLanguage);
       } else if (key === '9') {
         setCallStage('LANGUAGE_SELECTION');
         const p = 'Press 1 for Tamil, 2 for English, 3 for Hindi.';
         setDisplayText(p);
-        speakText(p, 'en');
+        playAudioPrompt('welcome_all', p, 'en');
       } else {
         const goodbye = selectedLanguage === 'ta'
           ? 'கிரிட்ட்வின் அழைத்ததற்கு நன்றி. வணக்கம்.'
@@ -532,8 +602,8 @@ export const TollFreePanel: React.FC = () => {
           ? 'ग्रिडट्विन हेल्पलाइन पर कॉल करने के लिए धन्यवाद। अलविदा।'
           : 'Thank you for calling GRIDTWIN Hotline. Goodbye.';
         setDisplayText(goodbye);
-        speakText(goodbye, selectedLanguage, () => {
-          setTimeout(handleHangup, 1000);
+        playAudioPrompt(`goodbye_${selectedLanguage}`, goodbye, selectedLanguage, () => {
+          setTimeout(handleHangup, 1200);
         });
       }
     }
